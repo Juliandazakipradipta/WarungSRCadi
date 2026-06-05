@@ -1,0 +1,214 @@
+{% extends 'base.html' %}
+{% block title %}Dashboard - Warung SRC Adi{% endblock %}
+
+{% block content %}
+<div class="topbar">
+    <div>
+        <h1>Dashboard</h1>
+        <p>Selamat datang! Pantau penjualan Warung SRC Adi hari ini.</p>
+    </div>
+    <div style="display: flex; gap: 10px;">
+        <a href="{{ url_for('transaksi') }}" class="btn btn-primary">
+            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M12 4v16m8-8H4"/></svg>
+            Tambah Transaksi
+        </a>
+    </div>
+</div>
+
+<!-- Alert Kedaluwarsa -->
+{% if produk_kadaluarsa %}
+<div class="alert-stok" style="background:#FFF1F2;border-color:#FECDD3;margin-bottom:10px">
+    <div>
+        <div class="alert-stok-title" style="color:#BE123C">🗓️ Peringatan Kedaluwarsa! {{ produk_kadaluarsa|length }} produk perlu diperhatikan.</div>
+        <div class="alert-stok-body" style="color:#9F1239">
+            {% for p in produk_kadaluarsa %}
+                <strong>{{ p.nama_produk }}</strong> — {{ p.status_expired }}{% if p.expired_date %} ({{ p.expired_date.strftime('%d/%m/%Y') }}){% endif %}
+                {% if not loop.last %} &nbsp;|&nbsp; {% endif %}
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Alert Stok Kritis -->
+{% if produk_kritis %}
+<div class="alert-stok" style="margin-bottom:10px">
+    <div>
+        <div class="alert-stok-title">⚠️ Stok Kritis! {{ produk_kritis|length }} produk hampir habis.</div>
+        <div class="alert-stok-body">
+            {% for p in produk_kritis %}
+                <strong>{{ p.nama_produk }}</strong> — sisa {{ p.stok }} {{ p.satuan }} (min. {{ p.stok_minimum }})
+                {% if not loop.last %} &nbsp;|&nbsp; {% endif %}
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Statistik -->
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-icon" style="background:#EDE9FE">💰</div>
+        <div class="stat-label">Omzet Hari Ini</div>
+        <div class="stat-value">Rp {{ "{:,.0f}".format(stat_hari.total_omzet).replace(',', '.') }}</div>
+        <div class="stat-sub">{{ stat_hari.total_trx }} transaksi</div>
+    </div>
+    <div class="stat-card card-clickable" onclick="window.location='{{ url_for('laporan') }}'" style="position:relative">
+        <div class="stat-icon" style="background:#DCFCE7">📈</div>
+        <div class="stat-label">Keuntungan Bersih</div>
+        <div class="stat-value" style="color:#059669">Rp {{ "{:,.0f}".format(keuntungan_hari).replace(',', '.') }}</div>
+        <div class="stat-sub">Klik untuk lihat laporan →</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon" style="background:#D1FAE5">📦</div>
+        <div class="stat-label">Total Produk</div>
+        <div class="stat-value">{{ total_produk }}</div>
+        <div class="stat-sub">Produk terdaftar</div>
+    </div>
+    <div class="stat-card card-clickable" onclick="toggleKritisModal(true)">
+        <div class="stat-icon" style="background:#FEF3C7">⚠️</div>
+        <div class="stat-label">Stok Kritis</div>
+        <div class="stat-value" style="color:#D97706">{{ stok_kritis_count }}</div>
+        <div class="stat-sub">Klik untuk lihat barang</div>
+    </div>
+    <div class="stat-card card-clickable" onclick="toggleKadaluarsaModal(true)">
+        <div class="stat-icon" style="background:#FEE2E2">🗓️</div>
+        <div class="stat-label">Kedaluwarsa</div>
+        <div class="stat-value" style="color:#EF4444">{{ kadaluarsa_count }}</div>
+        <div class="stat-sub">Klik untuk lihat barang</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon" style="background:#DBEAFE">👥</div>
+        <div class="stat-label">Pelanggan</div>
+        <div class="stat-value">{{ total_pelanggan }}</div>
+        <div class="stat-sub">Terdaftar</div>
+    </div>
+</div>
+
+<!-- Tabel transaksi & produk terlaris -->
+<div class="grid-2">
+    <div class="card">
+        <div class="card-header">
+            <div class="card-title">Transaksi Terakhir</div>
+            <a href="{{ url_for('transaksi') }}" style="font-size:13px;color:#7C3AED;text-decoration:none;font-weight:600">Lihat Semua →</a>
+        </div>
+        <div style="max-height: 250px; overflow-y: auto; position: relative;">
+            <table style="margin-bottom: 0;">
+                <thead style="position: sticky; top: 0; z-index: 10; background: #FAFAFA;">
+                    <tr><th>Kode</th><th>Pelanggan (WA)</th><th>Total</th><th>Metode</th></tr>
+                </thead>
+                <tbody>
+                {% if transaksi_terakhir %}
+                    {% for tr in transaksi_terakhir %}
+                    <tr>
+                        <td style="font-weight:600;font-size:12px">{{ tr.kode_transaksi }}</td>
+                        <td>{{ tr.pelanggan_wa or '-' }}</td>
+                        <td style="font-weight:700">Rp {{ "{:,.0f}".format(tr.total_harga).replace(',', '.') }}</td>
+                        <td><span class="badge badge-gray">{{ tr.metode_pembayaran|title }}</span></td>
+                    </tr>
+                    {% endfor %}
+                {% else %}
+                    <tr><td colspan="4" style="text-align:center;color:#6B7280;padding:30px">Belum ada transaksi</td></tr>
+                {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <div class="card-title">Produk Terlaris</div>
+            <a href="{{ url_for('laporan') }}" style="font-size:13px;color:#7C3AED;text-decoration:none;font-weight:600">Laporan →</a>
+        </div>
+        <div style="max-height: 250px; overflow-y: auto; position: relative;">
+            <table style="margin-bottom: 0;">
+                <thead style="position: sticky; top: 0; z-index: 10; background: #FAFAFA;">
+                    <tr><th>Produk</th><th>Terjual</th><th>Pendapatan</th></tr>
+                </thead>
+                <tbody>
+                {% if produk_terlaris %}
+                    {% for pl in produk_terlaris %}
+                    <tr>
+                        <td>
+                            <div style="font-weight:600">{{ pl.nama_produk }}</div>
+                            <div style="font-size:12px;color:#6B7280">{{ pl.kategori }}</div>
+                        </td>
+                        <td><span class="badge badge-info">{{ pl.total_terjual }} pcs</span></td>
+                        <td style="font-weight:700">Rp {{ "{:,.0f}".format(pl.total_pendapatan).replace(',', '.') }}</td>
+                    </tr>
+                    {% endfor %}
+                {% else %}
+                    <tr><td colspan="3" style="text-align:center;color:#6B7280;padding:30px">Belum ada data</td></tr>
+                {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL STOK KRITIS -->
+<div class="modal-overlay" id="modalStokKritis">
+    <div class="modal">
+        <h2>Daftar Produk Stok Kritis</h2>
+        {% if produk_kritis %}
+        <div style="display:flex;flex-direction:column;gap:10px">
+            {% for p in produk_kritis %}
+            <div style="padding:14px 16px;border:1px solid #F3F4F6;border-radius:14px;display:flex;justify-content:space-between;align-items:center;gap:12px;">
+                <div>
+                    <div style="font-weight:700">{{ p.nama_produk }}</div>
+                    <div style="font-size:12px;color:var(--muted)">Stok: {{ p.stok }} {{ p.satuan }} · Min: {{ p.stok_minimum }}</div>
+                </div>
+                <span class="badge badge-warning">Stok Kritis</span>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p>Tidak ada produk dalam status kritis saat ini.</p>
+        {% endif %}
+        <div class="modal-actions">
+            <button type="button" class="btn btn-outline" onclick="toggleKritisModal(false)">Tutup</button>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL KADALUARSA -->
+<div class="modal-overlay" id="modalKadaluarsa">
+    <div class="modal">
+        <h2>Daftar Produk Kedaluwarsa</h2>
+        {% if produk_kadaluarsa %}
+        <div style="display:flex;flex-direction:column;gap:10px">
+            {% for p in produk_kadaluarsa %}
+            <div style="padding:14px 16px;border:1px solid #F3F4F6;border-radius:14px;display:flex;justify-content:space-between;align-items:center;gap:12px;">
+                <div>
+                    <div style="font-weight:700">{{ p.nama_produk }}</div>
+                    <div style="font-size:12px;color:#BE123C">📅 {{ p.status_expired }}{% if p.expired_date %} — {{ p.expired_date.strftime('%d/%m/%Y') }}{% endif %}</div>
+                </div>
+                <span class="badge badge-danger">{{ p.status_expired }}</span>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p>Tidak ada produk yang kedaluwarsa atau hampir kedaluwarsa saat ini.</p>
+        {% endif %}
+        <div class="modal-actions">
+            <button type="button" class="btn btn-outline" onclick="toggleKadaluarsaModal(false)">Tutup</button>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+function toggleKritisModal(show) {
+    const modal = document.getElementById('modalStokKritis');
+    if (!modal) return;
+    modal.classList.toggle('show', show);
+}
+function toggleKadaluarsaModal(show) {
+    const modal = document.getElementById('modalKadaluarsa');
+    if (!modal) return;
+    modal.classList.toggle('show', show);
+}
+</script>
+{% endblock %}

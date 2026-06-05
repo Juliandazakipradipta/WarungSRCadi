@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Struk Penjualan</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Courier New', monospace;
+            background: #f5f5f5;
+            padding: 20px;
+        }
+        
+        .struk-container {
+            max-width: 400px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        .struk-header {
+            text-align: center;
+            border-bottom: 3px dashed #333;
+            padding-bottom: 15px;
+            margin-bottom: 15px;
+        }
+        
+        .struk-title {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .struk-shop {
+            font-size: 14px;
+            color: #555;
+        }
+        
+        .struk-info {
+            font-size: 12px;
+            line-height: 1.8;
+            margin-bottom: 15px;
+            border-bottom: 1px dashed #999;
+            padding-bottom: 15px;
+        }
+        
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+        }
+        
+        .info-label {
+            width: 80px;
+        }
+        
+        .info-value {
+            flex: 1;
+            text-align: right;
+            font-weight: bold;
+        }
+        
+        .struk-items {
+            margin-bottom: 15px;
+            border-bottom: 1px dashed #999;
+            padding-bottom: 15px;
+        }
+        
+        .items-header {
+            font-size: 12px;
+            font-weight: bold;
+            border-bottom: 1px solid #ccc;
+            padding-bottom: 8px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+        }
+        
+        .item-row {
+            font-size: 12px;
+            margin-bottom: 8px;
+            line-height: 1.4;
+        }
+        
+        .item-name {
+            font-weight: bold;
+        }
+        
+        .item-detail {
+            display: flex;
+            justify-content: space-between;
+            font-size: 11px;
+            color: #666;
+            margin-top: 2px;
+        }
+        
+        .struk-total {
+            text-align: right;
+            margin-bottom: 15px;
+            border-bottom: 3px dashed #333;
+            padding-bottom: 15px;
+        }
+        
+        .total-label {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 5px;
+        }
+        
+        .total-amount {
+            font-size: 18px;
+            font-weight: bold;
+            color: #000;
+        }
+        
+        .struk-payment {
+            font-size: 12px;
+            margin-bottom: 15px;
+            border-bottom: 1px dashed #999;
+            padding-bottom: 15px;
+        }
+        
+        .payment-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 3px;
+        }
+        
+        .struk-footer {
+            text-align: center;
+            font-size: 12px;
+            line-height: 1.6;
+            margin-top: 15px;
+        }
+        
+        .footer-text {
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        
+        .footer-note {
+            font-size: 11px;
+            color: #999;
+            margin-top: 10px;
+        }
+        
+        .divider {
+            text-align: center;
+            font-size: 14px;
+            color: #999;
+            margin: 10px 0;
+            letter-spacing: 2px;
+        }
+        
+        @media print {
+            body {
+                background: white;
+                padding: 0;
+            }
+            
+            .struk-container {
+                max-width: 80mm;
+                box-shadow: none;
+                border-radius: 0;
+                margin: 0;
+                padding: 0;
+            }
+            
+            .print-btn-container {
+                display: none;
+            }
+        }
+        
+        .print-btn-container {
+            text-align: center;
+            margin-top: 20px;
+            display: none;
+        }
+        
+        @media print {
+            .print-btn-container {
+                display: none !important;
+            }
+        }
+        
+        .btn-print {
+            background: #3b82f6;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-family: Arial, sans-serif;
+        }
+        
+        .btn-print:hover {
+            background: #2563eb;
+        }
+        
+        /* Untuk layar desktop */
+        @media (max-width: 600px) {
+            .struk-container {
+                padding: 15px;
+            }
+            
+            body {
+                padding: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="struk-container">
+        <!-- Header -->
+        <div class="struk-header">
+            <div class="struk-title">STRUK PENJUALAN</div>
+            <div class="struk-shop">🏪 WARUNG SRC ADI</div>
+        </div>
+        
+        <!-- Info Transaksi -->
+        <div class="struk-info">
+            <div class="info-row">
+                <div class="info-label">Kode</div>
+                <div class="info-value">{{ transaksi.kode_transaksi }}</div>
+            </div>
+            <div class="info-row">
+                <div class="info-label">Tanggal</div>
+                <div class="info-value">{{ transaksi.tanggal_transaksi.strftime('%d/%m/%Y') }}</div>
+            </div>
+            <div class="info-row">
+                <div class="info-label">Jam</div>
+                <div class="info-value">{{ transaksi.tanggal_transaksi.strftime('%H:%M') if transaksi.tanggal_transaksi else '' }}</div>
+            </div>
+            {% if transaksi.no_whatsapp %}
+            <div class="info-row">
+                <div class="info-label">Pelanggan</div>
+                <div class="info-value">{{ transaksi.no_whatsapp }}</div>
+            </div>
+            {% endif %}
+        </div>
+        
+        <!-- Item -->
+        <div class="struk-items">
+            <div class="items-header">
+                <span>Item</span>
+                <span>Harga</span>
+            </div>
+            {% for item in items %}
+            <div class="item-row">
+                <div class="item-name">{{ item.nama_produk }}</div>
+                <div class="item-detail">
+                    <span>{{ item.jumlah }} pcs × Rp {{ "{:,.0f}".format(item.harga_satuan).replace(',', '.') }}</span>
+                    <span>Rp {{ "{:,.0f}".format(item.subtotal).replace(',', '.') }}</span>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        
+        <!-- Total -->
+        <div class="struk-total">
+            <div class="total-label">TOTAL PEMBAYARAN</div>
+            <div class="total-amount">Rp {{ "{:,.0f}".format(transaksi.total_harga).replace(',', '.') }}</div>
+        </div>
+        
+        <!-- Metode Pembayaran -->
+        <div class="struk-payment">
+            <div class="payment-row">
+                <span>Metode Pembayaran</span>
+                <strong>{{ transaksi.metode_pembayaran|title }}</strong>
+            </div>
+        </div>
+        
+        <!-- Footer -->
+        <div class="struk-footer">
+            <div class="divider">━━━━━━━━━━━━</div>
+            <div class="footer-text">Terima Kasih!</div>
+            <div class="footer-text">Atas Kunjungan Anda</div>
+            <div class="footer-note">
+                Semoga puas dengan produk kami
+                <br>Warung SRC Adi
+            </div>
+            <div class="divider">━━━━━━━━━━━━</div>
+        </div>
+    </div>
+    
+    <!-- Print Button (visible di screen, tidak tercetak) -->
+    <div class="print-btn-container" id="printBtnContainer">
+        <button class="btn-print" onclick="window.print()">🖨️ Cetak Struk</button>
+        <button class="btn-print" onclick="history.back()" style="background:#6B7280;margin-left:10px">← Kembali</button>
+    </div>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Tampilkan tombol print hanya di screen (tidak di print preview)
+            document.getElementById('printBtnContainer').style.display = 'flex';
+            document.getElementById('printBtnContainer').style.justifyContent = 'center';
+            document.getElementById('printBtnContainer').style.gap = '10px';
+        });
+    </script>
+</body>
+</html>

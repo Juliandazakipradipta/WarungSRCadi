@@ -1,0 +1,334 @@
+{% extends 'base.html' %}
+{% block title %}Transaksi - Warung SRC Adi{% endblock %}
+
+{% block content %}
+<div class="topbar">
+    <div>
+        <h1>Transaksi Penjualan</h1>
+        <p>Catat penjualan dan pantau riwayat transaksi</p>
+    </div>
+</div>
+
+<!-- TABS -->
+<div class="tabs">
+    <button class="tab-btn active" onclick="switchTab('baru', this)">+ Transaksi Baru</button>
+    <button class="tab-btn" onclick="switchTab('riwayat', this)">Riwayat Transaksi</button>
+</div>
+
+<!-- TAB: TRANSAKSI BARU -->
+<div id="tab-baru" class="tab-content active">
+    <form method="POST" id="formTrx">
+        <div class="grid-2">
+
+            <!-- Info Transaksi -->
+            <div class="card">
+                <div class="card-header"><div class="card-title">Info Transaksi</div></div>
+                <div class="card-body">
+                    <div class="form-group">
+                        <label>Pelanggan</label>
+                        <input type="text" id="pelangganSearch" name="pelangganSearch" placeholder="Ketik nomor WA..." 
+                            list="pelangganList" oninput="updateNamaDariWA()" style="margin-bottom:8px">
+                        <datalist id="pelangganList">
+                            {% for p in pelanggan_list %}
+                            <option value="{{ p.no_whatsapp }}">
+                            {% endfor %}
+                        </datalist>
+                        <input type="hidden" name="id_pelanggan" id="idPelanggan">
+                        <small id="hintPelanggan" style="color:#6B7280;font-size:12px;margin-top:8px;display:none">Nomor WA belum terdaftar — akan dibuat pelanggan baru saat simpan transaksi</small>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Tanggal Transaksi</label>
+                            <input type="date" name="tanggal_transaksi" value="{{ today }}" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Metode Pembayaran</label>
+                            <select name="metode_pembayaran">
+                                <option value="transfer">Transfer Bank</option>
+                                <option value="tunai">Tunai</option>
+                                <option value="qris">QRIS</option>
+                            </select>
+                        </div>
+                    </div>
+                    <!-- Status pembayaran dan alamat dihilangkan untuk model retail sembako -->
+                </div>
+            </div>
+
+            <!-- Item Produk -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">Item Produk</div>
+                    <div style="display:flex;gap:8px">
+                        <button type="button" class="btn btn-danger btn-sm" onclick="hapusSemuaItem()" title="Hapus Semua Item">
+                            🗑️ Clear All
+                        </button>
+                        <button type="button" class="btn btn-primary btn-sm" onclick="tambahBaris()">
+                            + Tambah Item
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="form-group" style="margin-bottom:16px">
+                        <label style="font-size:14px;font-weight:600;display:block;margin-bottom:8px">Filter Kategori Produk</label>
+                        <select id="filterKategoriProduk" onchange="perbaruiDatalistProduk()" style="width:100%;padding:10px;border:1.5px solid var(--border);border-radius:10px;background:#fff">
+                            <option value="">Semua Kategori</option>
+                            {% for kat in kategori_list %}
+                            <option value="{{ kat }}">{{ kat }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <!-- Header kolom -->
+                    <div class="item-baris item-header">
+                        <span>Produk</span><span>Qty (pcs)</span><span>Subtotal</span><span></span>
+                    </div>
+                    <!-- Container baris item -->
+                    <div id="itemContainer" style="border:1.5px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:16px"></div>
+                    <datalist id="produkSearchList"></datalist>
+
+                    <!-- Total -->
+                    <div class="total-panel">
+                        <div>
+                            <div class="total-label">Total Pembayaran</div>
+                            <div class="total-value" id="totalDisplay">Rp 0</div>
+                        </div>
+                        <div class="total-note">Sesuai item yang dipilih</div>
+                    </div>
+
+                    <button type="submit" class="btn btn-success btn-save">
+                        <span>💾 Simpan Transaksi</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+
+<!-- TAB: RIWAYAT -->
+<div id="tab-riwayat" class="tab-content">
+    <div class="card">
+        <div class="card-header">
+            <div class="card-title">
+                Riwayat Transaksi
+                <span id="jumlahTransaksi" style="font-size:12px;color:var(--muted);font-weight:400;margin-left:8px">
+                    {{ riwayat|length }} transaksi
+                </span>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px">
+                <label style="font-size:12px;color:var(--muted);font-weight:500;white-space:nowrap">Filter Tanggal:</label>
+                <input type="date" id="filterTanggal" value="{{ tanggal_filter }}"
+                    onchange="filterBerdasarkanTanggal()"
+                    style="padding:7px 12px;border:1.5px solid var(--border);border-radius:8px;font-family:inherit;font-size:13px;outline:none;cursor:pointer">
+            </div>
+        </div>
+        <div class="scrollable-table">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Kode</th><th>Tanggal</th><th>Pelanggan (WA)</th>
+                        <th>Total</th><th>Metode</th><th>Aksi</th>
+                    </tr>
+                </thead>
+                <tbody>
+                {% if riwayat %}
+                    {% for tr in riwayat %}
+                    <tr>
+                        <td style="font-weight:600;font-size:12px">{{ tr.kode_transaksi }}</td>
+                        <td>{{ tr.tanggal_transaksi.strftime('%d/%m/%Y') if tr.tanggal_transaksi else '-' }}</td>
+                        <td>{{ tr.no_whatsapp or '-' }}</td>
+                        <td style="font-weight:700">Rp {{ "{:,.0f}".format(tr.total_harga).replace(',', '.') }}</td>
+                        <td><span class="badge badge-gray">{{ tr.metode_pembayaran|title }}</span></td>
+                        <td>
+                            <div style="display:flex;gap:6px;flex-wrap:wrap">
+                                <a href="{{ url_for('struk', id_transaksi=tr.id_transaksi) }}" class="btn btn-primary btn-sm" target="_blank">🖨️ Cetak</a>
+                                <form method="POST" action="{{ url_for('kirim_struk_wa', id_transaksi=tr.id_transaksi) }}" style="display:inline" target="_blank">
+                                    <button type="submit" class="btn btn-success btn-sm" onclick="return confirm('Kirim struk ke WhatsApp?')">📱 Kirim WA</button>
+                                </form>
+                                <form method="POST" style="display:inline" onsubmit="return confirm('Yakin hapus transaksi ini?');">
+                                    <input type="hidden" name="action" value="hapus">
+                                    <input type="hidden" name="id_transaksi" value="{{ tr.id_transaksi }}">
+                                    <button type="submit" class="btn btn-danger btn-sm">🗑️ Hapus</button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                {% else %}
+                    <tr class="empty-row"><td colspan="6" style="text-align:center;padding:32px;color:var(--muted)">
+                        📋 Belum ada transaksi pada tanggal ini
+                    </td></tr>
+                {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<!-- DATA JSON: produk_list dikirim dari Flask, jika ingin statis gunakan fetch ke file JSON -->
+<script>
+// Data produk dari Flask (dikirim sebagai JSON)
+const produkData = {{ produk_list | tojson }};
+let itemCount = 0;
+
+function buatOptionProduk(p) {
+    const factor = p.unit_factor || 1;
+    const unitText = p.satuan !== 'pcs' ? ` (${Math.floor(p.stok / factor)} ${p.satuan})` : '';
+    return `<option value="${p.nama_produk}" data-id="${p.id_produk}" data-harga="${p.harga_jual}" data-stok="${p.stok}" data-unit-factor="${factor}" data-unit="${p.satuan}" data-kategori="${p.kategori}">${p.nama_produk}${unitText}</option>`;
+}
+
+function perbaruiDatalistProduk() {
+    const filter = document.getElementById('filterKategoriProduk').value;
+    const filtered = produkData.filter(p => !filter || p.kategori === filter);
+    document.getElementById('produkSearchList').innerHTML = filtered.map(buatOptionProduk).join('');
+}
+
+function formatRp(n) {
+    return 'Rp ' + Math.round(n).toLocaleString('id-ID');
+}
+
+function tambahBaris() {
+    itemCount++;
+    const row = document.createElement('div');
+    row.className = 'item-baris';
+    row.id = 'baris-' + itemCount;
+    row.innerHTML = `
+        <div style="width:100%; display:flex; flex-direction:column; gap:6px">
+            <input list="produkSearchList" name="produk_name[]" id="produk-name-${itemCount}"
+                oninput="pilihProduk(${itemCount})"
+                placeholder="Cari produk..."
+                style="padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-family:inherit;font-size:13px;width:100%">
+            <input type="hidden" name="produk_id[]" id="produk-id-${itemCount}">
+        </div>
+        <input type="number" name="jumlah[]" id="qty-${itemCount}" min="1" value="1"
+            onchange="hitungSub(${itemCount})"
+            style="padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-family:inherit;font-size:13px;width:100%">
+        <span id="sub-${itemCount}" style="font-weight:700;font-size:13px;color:var(--text)">Rp 0</span>
+        <button type="button" onclick="hapusBaris(${itemCount})"
+            style="background:#FEE2E2;color:#991B1B;border:none;border-radius:6px;width:28px;height:28px;cursor:pointer;font-size:14px;font-weight:700">✕</button>
+    `;
+    document.getElementById('itemContainer').appendChild(row);
+}
+
+function pilihProduk(id) {
+    const nameInput = document.getElementById('produk-name-' + id);
+    const selectedValue = nameInput.value.trim();
+    const matched = produkData.find(p => p.nama_produk === selectedValue);
+    const prodIdInput = document.getElementById('produk-id-' + id);
+    const sub = document.getElementById('sub-' + id);
+    const qty = document.getElementById('qty-' + id);
+    if (!matched) {
+        prodIdInput.value = '';
+        sub.textContent = 'Rp 0';
+        hitungTotal();
+        return;
+    }
+    prodIdInput.value = matched.id_produk;
+    if (parseInt(qty.value) < 1) qty.value = 1;
+    hitungSub(id);
+}
+
+function hitungSub(id) {
+    const prodId = document.getElementById('produk-id-' + id).value;
+    const qty = document.getElementById('qty-' + id);
+    const sub = document.getElementById('sub-' + id);
+    if (!prodId) { sub.textContent = 'Rp 0'; hitungTotal(); return; }
+    const product = produkData.find(p => String(p.id_produk) === String(prodId));
+    if (!product) { sub.textContent = 'Rp 0'; hitungTotal(); return; }
+    const harga = parseFloat(product.harga_jual);
+    const stokMax = parseInt(product.stok);
+    if (parseInt(qty.value) > stokMax) qty.value = stokMax;
+    sub.textContent = formatRp(harga * parseInt(qty.value));
+    hitungTotal();
+}
+
+function hitungTotal() {
+    let total = 0;
+    document.querySelectorAll('[id^="sub-"]').forEach(el => {
+        total += parseInt(el.textContent.replace(/[^0-9]/g, '')) || 0;
+    });
+    document.getElementById('totalDisplay').textContent = formatRp(total);
+}
+
+function hapusBaris(id) {
+    const el = document.getElementById('baris-' + id);
+    if (el) el.remove();
+    hitungTotal();
+}
+
+// Hapus semua item
+function hapusSemuaItem() {
+    document.getElementById('itemContainer').innerHTML = '';
+    itemCount = 0;
+    hitungTotal();
+}
+
+function switchTab(name, btn) {
+    document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+    document.getElementById('tab-' + name).classList.add('active');
+    btn.classList.add('active');
+}
+
+// Tambah 1 baris otomatis saat halaman load
+perbaruiDatalistProduk();
+tambahBaris();
+
+// Data pelanggan dari Flask
+const pelangganData = {{ pelanggan_list | tojson }};
+
+// Update nama pelanggan berdasarkan nomor WA yang diketik
+function updateNamaDariWA() {
+    const input = document.getElementById('pelangganSearch');
+    const idInput = document.getElementById('idPelanggan');
+    const hint = document.getElementById('hintPelanggan');
+    const wa = input.value.trim();
+
+    if (!wa) {
+        idInput.value = '';
+        hint.style.display = 'none';
+        return;
+    }
+
+    const pelanggan = pelangganData.find(p => p.no_whatsapp === wa);
+    if (pelanggan) {
+        idInput.value = pelanggan.id_pelanggan;
+        hint.style.display = 'none';
+    } else {
+        idInput.value = '';
+        hint.style.display = 'block';
+    }
+}
+
+// Filter riwayat berdasarkan tanggal yang dipilih
+function filterBerdasarkanTanggal() {
+    const tanggal = document.getElementById('filterTanggal').value;
+    if (tanggal) {
+        window.location.href = window.location.pathname + '?tanggal=' + tanggal;
+    }
+}
+
+// Otomatis buka WhatsApp jika ada parameter send_wa di URL
+// dan pindahkan tab ke riwayat jika ada parameter tanggal
+window.addEventListener('DOMContentLoaded', () => {
+    const urlParams = new URLSearchParams(window.location.search);
+    
+    // Auto-open WhatsApp jika ada parameter send_wa
+    const sendWaUrl = urlParams.get('send_wa');
+    if (sendWaUrl) {
+        window.open(sendWaUrl, '_blank');
+        const cleanUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
+        window.history.replaceState({ path: cleanUrl }, '', cleanUrl);
+    }
+    
+    // Auto-switch ke tab Riwayat jika ada parameter tanggal di URL
+    const tanggalParam = urlParams.get('tanggal');
+    if (tanggalParam) {
+        const riwayatTab = document.querySelector('.tab-btn:nth-child(2)');
+        if (riwayatTab) {
+            switchTab('riwayat', riwayatTab);
+        }
+    }
+});
+</script>
+{% endblock %}

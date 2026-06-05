@@ -1,0 +1,288 @@
+{% extends 'base.html' %}
+{% block title %}Produk & Stok - Warung SRC Adi{% endblock %}
+
+{% block content %}
+<div class="topbar">
+    <div>
+        <h1>Produk & Stok</h1>
+        <p>Kelola produk retail sembako dan pantau stok serta tanggal kedaluwarsa</p>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center">
+        <form method="GET" style="display:flex;gap:8px;align-items:center">
+            <label style="font-size:14px;color:var(--muted);margin:0">Filter:</label>
+            <select name="kategori_filter" onchange="this.form.submit()" style="padding:8px 10px;border:1.5px solid var(--border);border-radius:10px;background:#fff">
+                <option value="">Semua Kategori</option>
+                {% for cat in kategori_list %}
+                <option value="{{ cat }}" {% if kategori_filter == cat %}selected{% endif %}>{{ cat }}</option>
+                {% endfor %}
+            </select>
+        </form>
+        <button class="btn btn-primary" onclick="document.getElementById('modalTambah').classList.add('show')">
+            <svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M12 4v16m8-8H4"/></svg>
+            Tambah Produk
+        </button>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <div class="card-title">Daftar Produk</div>
+        <span style="font-size:12px;color:var(--muted)">{{ produk_list|length }} produk</span>
+    </div>
+    {% if produk_list %}
+    <div class="produk-grid">
+        {% for p in produk_list %}
+        {% set pct = [((p.stok / (p.stok_minimum * 3)) * 100)|int, 100]|min if p.stok_minimum > 0 else 100 %}
+        {% set bar_color = '#10B981' if p.status_stok == 'Aman' else ('#F59E0B' if p.status_stok == 'Rendah' else '#EF4444') %}
+        <div class="produk-card">
+            <!-- Header -->
+            <div class="produk-card-header">
+                <div>
+                    <h3 class="produk-nama">{{ p.nama_produk }}</h3>
+                    <span class="badge badge-info" style="font-size:11px">{{ p.kategori }}</span>
+                </div>
+                <span class="badge {% if p.status_expired == 'Expired' %}badge-danger{% elif p.status_expired == 'Hampir Kadaluarsa' %}badge-warning{% elif p.status_stok == 'Aman' %}badge-success{% elif p.status_stok == 'Rendah' %}badge-warning{% elif p.status_stok == 'Kritis' %}badge-danger{% else %}badge-danger{% endif %}" style="white-space:nowrap">
+                    {% if p.status_expired == 'Expired' %}🔴 Kadaluarsa
+                    {% elif p.status_expired == 'Hampir Kadaluarsa' %}⚠️ Hampir Kadaluarsa
+                    {% elif p.status_stok == 'Aman' %}✓ Aman
+                    {% elif p.status_stok == 'Rendah' %}⚠️ Rendah
+                    {% elif p.status_stok == 'Kritis' %}🔴 Kritis
+                    {% else %}🔴 Habis{% endif %}
+                </span>
+            </div>
+
+            <!-- Harga -->
+            <div class="produk-harga">
+                <div class="harga-item">
+                    <span class="harga-label">Harga Jual</span>
+                    <span class="harga-value">Rp {{ "{:,.0f}".format(p.harga_jual).replace(',', '.') }}</span>
+                </div>
+                <div class="harga-item">
+                    <span class="harga-label">Margin</span>
+                    <span class="harga-value" style="color:#059669">Rp {{ "{:,.0f}".format(p.margin_keuntungan).replace(',', '.') }}</span>
+                </div>
+            </div>
+
+            <!-- Stok & Kedaluwarsa -->
+            <div class="produk-stok">
+                <div class="stok-info">
+                    <span class="stok-label">Stok</span>
+                    <strong class="stok-value">{{ p.display_stok }}</strong>
+                    <div class="stok-bar" style="margin-top:6px">
+                        <div class="stok-bar-fill" style="width:{{ pct }}%;background:{{ bar_color }}"></div>
+                    </div>
+                </div>
+                {% if p.expired_date %}
+                <div class="stok-info">
+                    <span class="stok-label">Kedaluwarsa</span>
+                    <strong style="font-size:13px">{{ p.expired_date.strftime('%d/%m/%Y') }}</strong>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Stats -->
+            <div class="produk-stats">
+                <div class="stat-box">
+                    <span>Terjual</span>
+                    <strong>{{ p.total_terjual }}</strong>
+                </div>
+                <div class="stat-box">
+                    <span>Keuntungan</span>
+                    <strong style="color:#059669">Rp {{ "{:,.0f}".format(p.total_keuntungan).replace(',', '.') }}</strong>
+                </div>
+            </div>
+
+            <!-- Aksi -->
+            <div class="produk-actions">
+                <button class="btn btn-secondary btn-sm" onclick="bukaEditProduk({
+                        id: {{ p.id_produk }},
+                        nama: '{{ p.nama_produk|escape }}',
+                        kategori: '{{ p.kategori|escape }}',
+                        harga_beli: {{ p.harga_beli }},
+                        harga_jual: {{ p.harga_jual }},
+                        stok: {{ p.stok }},
+                        stok_minimum: {{ p.stok_minimum }},
+                        satuan: '{{ p.satuan }}',
+                        expired_date: '{{ p.expired_date.strftime('%Y-%m-%d') if p.expired_date else '' }}'
+                    })">
+                    ✏️ Edit
+                </button>
+                <button class="btn btn-success btn-sm" onclick="bukaRestock({{ p.id_produk }}, '{{ p.nama_produk }}', {{ p.stok }}, '{{ p.expired_date.strftime('%Y-%m-%d') if p.expired_date else '' }}')">
+                    ⬆️ Restock
+                </button>
+                <form method="POST" style="display:inline" onsubmit="return confirm('Yakin hapus produk ini?')">
+                    <input type="hidden" name="action" value="hapus">
+                    <input type="hidden" name="id_produk" value="{{ p.id_produk }}">
+                    <button type="submit" class="btn btn-danger btn-sm">🗑️ Hapus</button>
+                </form>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div style="text-align:center;color:var(--muted);padding:60px 20px">
+        <p>Belum ada produk</p>
+        <p style="font-size:12px;margin-top:8px">Klik tombol "Tambah Produk" di atas untuk memulai</p>
+    </div>
+    {% endif %}
+</div>
+
+<!-- MODAL TAMBAH PRODUK -->
+<div class="modal-overlay" id="modalTambah">
+    <div class="modal">
+        <h2>Tambah Produk Baru</h2>
+        <form method="POST">
+            <input type="hidden" name="action" value="tambah">
+            <div class="form-group">
+                <label>Nama Produk</label>
+                <input type="text" name="nama_produk" required placeholder="contoh: Beras Cap Koki 5kg">
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Kategori</label>
+                    <select name="kategori">
+                        {% for cat in kategori_list %}
+                        <option>{{ cat }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Satuan</label>
+                    <select name="satuan">
+                        {% for unit in satuan_list %}
+                        <option value="{{ unit }}">{{ unit }}</option>
+                        {% endfor %}
+                    </select>
+                    <div class="form-hint">Box/lusin dikonversi otomatis ke pcs. Untuk satuan lainnya, stok disimpan sesuai satuan asli.</div>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Harga Beli (Rp)</label>
+                    <input type="number" name="harga_beli" required min="0" placeholder="0">
+                </div>
+                <div class="form-group">
+                    <label>Harga Jual (Rp)</label>
+                    <input type="number" name="harga_jual" required min="0" placeholder="0">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Stok Awal</label>
+                    <input type="number" name="stok" required min="0" value="0">
+                    <div class="form-hint">Masukkan jumlah unit sesuai satuan. Jika pilih box, 1 box dihitung 10 pcs.</div>
+                </div>
+                <div class="form-group">
+                    <label>Stok Minimum</label>
+                    <input type="number" name="stok_minimum" value="5" min="1">
+                    <div class="form-hint">Notifikasi Telegram dikirim jika stok pcs ≤ nilai ini.</div>
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Tanggal Kedaluwarsa</label>
+                <input type="date" name="expired_date">
+                <div class="form-hint">Kosongkan jika produk tidak memiliki tanggal kedaluwarsa.</div>
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn btn-outline" onclick="document.getElementById('modalTambah').classList.remove('show')">Batal</button>
+                <button type="submit" class="btn btn-primary">Simpan Produk</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- MODAL EDIT PRODUK -->
+<div class="modal-overlay" id="modalEdit">
+    <div class="modal">
+        <h2>Edit Produk</h2>
+        <form method="POST" id="formEditProduk">
+            <input type="hidden" name="action" value="edit">
+            <input type="hidden" name="id_produk" id="editIdProduk">
+            <div class="form-group">
+                <label>Nama Produk</label>
+                <input type="text" name="nama_produk" id="editNamaProduk" required placeholder="contoh: Beras Cap Koki 5kg">
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Kategori</label>
+                    <select name="kategori" id="editKategori">
+                        {% for cat in kategori_list %}
+                        <option>{{ cat }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Satuan</label>
+                    <select name="satuan" id="editSatuan">
+                        {% for unit in satuan_list %}
+                        <option value="{{ unit }}">{{ unit }}</option>
+                        {% endfor %}
+                    </select>
+                    <div class="form-hint">Box/lusin dikonversi otomatis ke pcs. Untuk satuan lainnya, stok disimpan sesuai satuan asli.</div>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Harga Beli (Rp)</label>
+                    <input type="number" name="harga_beli" id="editHargaBeli" required min="0" placeholder="0">
+                </div>
+                <div class="form-group">
+                    <label>Harga Jual (Rp)</label>
+                    <input type="number" name="harga_jual" id="editHargaJual" required min="0" placeholder="0">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Stok</label>
+                    <input type="number" name="stok" id="editStok" required min="0" value="0">
+                    <div class="form-hint">Masukkan stok saat ini sesuai satuan produk.</div>
+                </div>
+                <div class="form-group">
+                    <label>Stok Minimum</label>
+                    <input type="number" name="stok_minimum" id="editStokMinimum" value="5" min="1">
+                    <div class="form-hint">Tentukan batas minimal untuk notifikasi stok kritis.</div>
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Tanggal Kedaluwarsa</label>
+                <input type="date" name="expired_date" id="editExpiredDate">
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn btn-outline" onclick="document.getElementById('modalEdit').classList.remove('show')">Batal</button>
+                <button type="submit" class="btn btn-primary">Update Produk</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- MODAL RESTOCK -->
+<div class="modal-overlay" id="modalRestock">
+    <div class="modal">
+        <h2>Restock Stok</h2>
+        <p id="restockInfo" style="color:var(--muted);font-size:13.5px;margin-bottom:20px;padding:12px;background:var(--bg);border-radius:10px"></p>
+        <form method="POST">
+            <input type="hidden" name="action" value="restock">
+            <input type="hidden" name="id_produk" id="restockId">
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Jumlah Restock</label>
+                    <input type="number" name="jumlah_restock" required min="1" placeholder="Masukkan jumlah barang masuk">
+                </div>
+                <div class="form-group">
+                    <label>Tanggal Kedaluwarsa</label>
+                    <input type="date" name="expired_date" id="restockExpiredDate">
+                    <div class="form-hint">Isi jika ingin memperbarui tanggal kedaluwarsa saat restock.</div>
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn btn-outline" onclick="document.getElementById('modalRestock').classList.remove('show')">Batal</button>
+                <button type="submit" class="btn btn-success">+ Tambah Stok</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/produk.js') }}"></script>
+{% endblock %}

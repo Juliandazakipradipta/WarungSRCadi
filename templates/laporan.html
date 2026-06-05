@@ -1,0 +1,337 @@
+{% extends 'base.html' %}
+{% block title %}Laporan - Warung SRC Adi{% endblock %}
+
+{% block content %}
+<div class="topbar">
+    <div>
+        <h1>Laporan Penjualan</h1>
+        <p>Rekap omzet, analisis produk, dan visualisasi best/worst sellers</p>
+    </div>
+</div>
+
+<!-- Filter bulan -->
+<div class="card" style="margin-bottom:20px">
+    <div class="card-body" style="padding:16px 24px">
+        <form method="GET" id="formFilterBulan" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+            <label style="font-size:13px;font-weight:600;white-space:nowrap">Filter Bulan:</label>
+
+            <!-- Dropdown Bulan (Bahasa Indonesia) -->
+            <select id="selBulan" style="padding:8px 14px;border:1.5px solid var(--border);border-radius:10px;font-family:inherit;font-size:13px;outline:none;cursor:pointer">
+                {% set bulan_list = [
+                    ('01','Januari'),('02','Februari'),('03','Maret'),
+                    ('04','April'),('05','Mei'),('06','Juni'),
+                    ('07','Juli'),('08','Agustus'),('09','September'),
+                    ('10','Oktober'),('11','November'),('12','Desember')
+                ] %}
+                {% for num, nama in bulan_list %}
+                <option value="{{ num }}" {% if bulan_aktif[5:7] == num %}selected{% endif %}>{{ nama }}</option>
+                {% endfor %}
+            </select>
+
+            <!-- Dropdown Tahun -->
+            <select id="selTahun" style="padding:8px 14px;border:1.5px solid var(--border);border-radius:10px;font-family:inherit;font-size:13px;outline:none;cursor:pointer">
+                {% set tahun_aktif = bulan_aktif[:4] | int %}
+                {% for y in range(tahun_aktif - 2, tahun_aktif + 3) %}
+                <option value="{{ y }}" {% if tahun_aktif == y %}selected{% endif %}>{{ y }}</option>
+                {% endfor %}
+            </select>
+
+            <!-- Hidden input yang dikirim ke server (format YYYY-MM) -->
+            <input type="hidden" name="bulan" id="hidBulan" value="{{ bulan_aktif }}">
+
+            <button type="submit" class="btn btn-primary btn-sm" onclick="gabungBulan()">Tampilkan</button>
+            <button type="button" class="btn btn-success btn-sm" style="display: inline-flex; align-items: center; gap: 6px;" onclick="exportExcel()">
+                📥 Export ke Excel
+            </button>
+        </form>
+    </div>
+</div>
+
+<script>
+function gabungBulan() {
+    var bulan = document.getElementById('selBulan').value;
+    var tahun = document.getElementById('selTahun').value;
+    document.getElementById('hidBulan').value = tahun + '-' + bulan;
+}
+function exportExcel() {
+    gabungBulan();
+    var bulan = document.getElementById('hidBulan').value;
+    window.location.href = "{{ url_for('export_laporan') }}?bulan=" + bulan;
+}
+</script>
+
+<div class="grid-2">
+    <!-- Omzet per bulan -->
+    <div class="card">
+        <div class="card-header"><div class="card-title">Omzet & Keuntungan 12 Bulan Terakhir</div></div>
+        <div class="card-body">
+            {% if omzet_bulanan %}
+            <div style="position: relative; height: 320px; width: 100%;">
+                <canvas id="chartOmzet12Bulan"></canvas>
+            </div>
+            {% else %}
+            <div style="text-align:center;color:var(--muted);padding:40px 20px;font-size:13px">
+                Belum ada data omzet
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Produk bulan ini -->
+    <div class="card">
+        <div class="card-header">
+            <div class="card-title">Produk Terjual — {{ bulan_label }}</div>
+        </div>
+        <div style="max-height:320px;overflow-y:auto;border-radius:0 0 12px 12px;">
+        <table style="margin-bottom:0">
+            <thead style="position:sticky;top:0;z-index:1;background:var(--card-bg,#fff)">
+                <tr><th>Produk</th><th>Kategori</th><th>Terjual</th><th>Pendapatan</th><th>Keuntungan</th></tr>
+            </thead>
+            <tbody>
+            {% if produk_laporan %}
+                {% for pr in produk_laporan %}
+                <tr>
+                    <td style="font-weight:600">{{ pr.nama_produk }}</td>
+                    <td><span class="badge badge-gray">{{ pr.kategori }}</span></td>
+                    <td><span class="badge badge-info">{{ pr.total_terjual }} pcs</span></td>
+                    <td style="font-weight:700">Rp {{ "{:,.0f}".format(pr.total_pendapatan).replace(',', '.') }}</td>
+                    <td style="font-weight:700;color:#059669">Rp {{ "{:,.0f}".format(pr.total_keuntungan).replace(',', '.') }}</td>
+                </tr>
+                {% endfor %}
+            {% else %}
+                <tr class="empty-row"><td colspan="5">Tidak ada transaksi di bulan {{ bulan_label }}</td></tr>
+            {% endif %}
+            </tbody>
+        </table>
+        </div>
+    </div>
+</div>
+
+<!-- VISUALISASI CHART -->
+<div class="grid-2" style="margin-top:24px">
+    <!-- Best Sellers Chart -->
+    <div class="card">
+        <div class="card-header">
+            <div class="card-title">🏆 Top 10 Best Sellers</div>
+            <span style="font-size:11px;color:var(--muted)">Produk paling laris</span>
+        </div>
+        <div class="card-body">
+            {% if top_sellers %}
+            <canvas id="chartBestSellers" style="max-height:300px"></canvas>
+            {% else %}
+            <div style="text-align:center;color:var(--muted);padding:40px 20px;font-size:13px">
+                Tidak ada data best sellers
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Worst Sellers Chart -->
+    <div class="card">
+        <div class="card-header">
+            <div class="card-title">📉 Top 10 Worst Sellers</div>
+            <span style="font-size:11px;color:var(--muted)">Produk paling tidak laku</span>
+        </div>
+        <div class="card-body">
+            {% if worst_sellers %}
+            <canvas id="chartWorstSellers" style="max-height:300px"></canvas>
+            {% else %}
+            <div style="text-align:center;color:var(--muted);padding:40px 20px;font-size:13px">
+                Tidak ada data worst sellers
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+    // Data Omzet 12 Bulan
+    const omzetDataRaw = {{ omzet_bulanan | tojson }};
+    // Balik urutan data agar berurutan dari bulan terlama ke terbaru (kiri ke kanan)
+    const omzetData = omzetDataRaw ? [...omzetDataRaw].reverse() : [];
+
+    // Data Best Sellers
+    const bestSellersData = {{ top_sellers | tojson }};
+    // Data Worst Sellers
+    const worstSellersData = {{ worst_sellers | tojson }};
+
+    // Render Chart Omzet & Keuntungan 12 Bulan (Grafik Batangan)
+    if (omzetData && omzetData.length > 0) {
+        const ctxOmzet = document.getElementById('chartOmzet12Bulan').getContext('2d');
+        new Chart(ctxOmzet, {
+            type: 'bar',
+            data: {
+                labels: omzetData.map(row => row.bulan),
+                datasets: [
+                    {
+                        label: 'Total Omzet',
+                        data: omzetData.map(row => row.total_omzet),
+                        backgroundColor: '#7C3AED',
+                        borderRadius: 6,
+                        borderSkipped: false
+                    },
+                    {
+                        label: 'Keuntungan Bersih',
+                        data: omzetData.map(row => row.keuntungan_bersih || 0),
+                        backgroundColor: '#10B981',
+                        borderRadius: 6,
+                        borderSkipped: false
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: {
+                    mode: 'index',
+                    intersect: false
+                },
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'top',
+                        labels: {
+                            boxWidth: 12,
+                            font: { size: 12, weight: '600' }
+                        }
+                    },
+                    tooltip: {
+                        padding: 12,
+                        backgroundColor: 'rgba(17, 24, 39, 0.95)',
+                        titleFont: { size: 12, weight: '700' },
+                        bodyFont: { size: 13 },
+                        callbacks: {
+                            label: function(context) {
+                                let label = context.dataset.label || '';
+                                if (label) {
+                                    label += ': ';
+                                }
+                                if (context.parsed.y !== null) {
+                                    label += new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(context.parsed.y);
+                                }
+                                return label;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        grid: { display: false },
+                        ticks: { font: { size: 11, weight: '500' } }
+                    },
+                    y: {
+                        beginAtZero: true,
+                        grid: { color: '#F3F4F6' },
+                        ticks: {
+                            font: { size: 11 },
+                            callback: function(value) {
+                                return 'Rp ' + new Intl.NumberFormat('id-ID', { maximumFractionDigits: 0 }).format(value / 1000) + 'rb';
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    if (bestSellersData && bestSellersData.length > 0) {
+        const bestLabels = bestSellersData.map(p => p.nama_produk);
+        const bestValues = bestSellersData.map(p => p.total_terjual);
+        const bestColors = [
+            '#10B981', '#34D399', '#6EE7B7', '#A7F3D0', '#D1FAE5',
+            '#059669', '#047857', '#065F46', '#064E3B', '#022C22'
+        ];
+
+        const ctxBest = document.getElementById('chartBestSellers').getContext('2d');
+        new Chart(ctxBest, {
+            type: 'bar',
+            data: {
+                labels: bestLabels,
+                datasets: [{
+                    label: 'Terjual (pcs)',
+                    data: bestValues,
+                    backgroundColor: bestColors,
+                    borderRadius: 6,
+                    borderSkipped: false
+                }]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return context.parsed.x + ' pcs';
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        beginAtZero: true,
+                        ticks: { font: { size: 12 } }
+                    },
+                    y: {
+                        ticks: { font: { size: 11 } }
+                    }
+                }
+            }
+        });
+    }
+
+    if (worstSellersData && worstSellersData.length > 0) {
+        const worstLabels = worstSellersData.map(p => p.nama_produk);
+        const worstValues = worstSellersData.map(p => p.total_terjual);
+        const worstColors = [
+            '#EF4444', '#F87171', '#FCA5A5', '#FECACA', '#FEE2E2',
+            '#DC2626', '#B91C1C', '#991B1B', '#7F1D1D', '#5F1F1F'
+        ];
+
+        const ctxWorst = document.getElementById('chartWorstSellers').getContext('2d');
+        new Chart(ctxWorst, {
+            type: 'bar',
+            data: {
+                labels: worstLabels,
+                datasets: [{
+                    label: 'Terjual (pcs)',
+                    data: worstValues,
+                    backgroundColor: worstColors,
+                    borderRadius: 6,
+                    borderSkipped: false
+                }]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return context.parsed.x + ' pcs';
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        beginAtZero: true,
+                        ticks: { font: { size: 12 } }
+                    },
+                    y: {
+                        ticks: { font: { size: 11 } }
+                    }
+                }
+            }
+        });
+    }
+</script>
+{% endblock %}
