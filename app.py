@@ -232,7 +232,7 @@ def dashboard():
 
     # Produk stok kritis list (hanya yang tidak kadaluarsa/hampir kadaluarsa)
     cur.execute("""
-        SELECT nama_produk, stok, stok_minimum, satuan
+        SELECT id_produk, nama_produk, stok, stok_minimum, satuan
         FROM produk
         WHERE stok <= stok_minimum
           AND (expired_date IS NULL OR expired_date > DATE_ADD(CURDATE(), INTERVAL 7 DAY))
@@ -242,7 +242,7 @@ def dashboard():
 
     # Produk kadaluarsa list
     cur.execute("""
-        SELECT nama_produk, stok, satuan, expired_date,
+        SELECT id_produk, nama_produk, stok, satuan, expired_date,
                CASE
                    WHEN expired_date < CURDATE() THEN 'Expired'
                    ELSE 'Hampir Kadaluarsa'
@@ -462,6 +462,8 @@ def transaksi():
         metode_bayar     = request.form['metode_pembayaran']
         catatan          = ''
 
+        nama_pelanggan_baru = request.form.get('nama_pelanggan_baru', '').strip()
+
         if not id_pelanggan and no_wa_baru:
             cur.execute("SELECT id_pelanggan FROM pelanggan WHERE no_whatsapp = %s", (no_wa_baru,))
             existing = cur.fetchone()
@@ -471,9 +473,10 @@ def transaksi():
                 cur.execute("""
                     INSERT INTO pelanggan (nama_pelanggan, no_whatsapp, alamat)
                     VALUES (%s, %s, %s)
-                """, ('', no_wa_baru, ''))
+                """, (nama_pelanggan_baru, no_wa_baru, ''))
                 id_pelanggan = cur.lastrowid
-                flash(f'Pelanggan baru "{no_wa_baru}" berhasil didaftarkan!', 'success')
+                label = f'"{nama_pelanggan_baru}" ({no_wa_baru})' if nama_pelanggan_baru else f'"{no_wa_baru}"'
+                flash(f'Pelanggan baru {label} berhasil didaftarkan!', 'success')
 
         # Validasi: Pastikan pelanggan ada
         if not id_pelanggan:
@@ -501,20 +504,27 @@ def transaksi():
                 items.append({'id': pid, 'jml': jml, 'harga': pr['harga_jual'], 'sub': sub})
 
         if items:
-            cur.execute("""
-                INSERT INTO transaksi (kode_transaksi, id_pelanggan, tanggal_transaksi,
-                                       total_harga, status_pembayaran, metode_pembayaran, catatan)
-                VALUES (%s, %s, %s, %s, %s, %s, %s)
-            """, (kode, id_pelanggan, tanggal, total, 'n/a', metode_bayar, catatan))
-            id_trx = cur.lastrowid
-
-            for it in items:
+            try:
                 cur.execute("""
-                    INSERT INTO detail_transaksi (id_transaksi, id_produk, jumlah, harga_satuan, subtotal)
-                    VALUES (%s, %s, %s, %s, %s)
-                """, (id_trx, it['id'], it['jml'], it['harga'], it['sub']))
+                    INSERT INTO transaksi (kode_transaksi, id_pelanggan, tanggal_transaksi,
+                                           total_harga, status_pembayaran, metode_pembayaran, catatan)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s)
+                """, (kode, id_pelanggan, tanggal, total, 'lunas', metode_bayar, catatan))
+                id_trx = cur.lastrowid
 
-            mysql.connection.commit()
+                for it in items:
+                    cur.execute("""
+                        INSERT INTO detail_transaksi (id_transaksi, id_produk, jumlah, harga_satuan, subtotal)
+                        VALUES (%s, %s, %s, %s, %s)
+                    """, (id_trx, it['id'], it['jml'], it['harga'], it['sub']))
+
+                mysql.connection.commit()
+            except Exception as db_err:
+                mysql.connection.rollback()
+                flash(f'Gagal menyimpan transaksi ke database: {str(db_err)}', 'danger')
+                cur.close()
+                return redirect(url_for('transaksi'))
+
             cek_stok_dan_notif(cur)
 
             # Ambil detail pelanggan untuk nomor WA
@@ -546,7 +556,8 @@ def transaksi():
                 whatsapp_url = f"https://api.whatsapp.com/send?phone={clean_phone}&text={pesan_encoded}"
                 return redirect(url_for('transaksi', send_wa=whatsapp_url))
             else:
-                flash(f'Gagal mengirim WhatsApp otomatis: {msg_wa}', 'warning')
+                if msg_wa:
+                    flash(f'Gagal mengirim WhatsApp otomatis: {msg_wa}', 'warning')
                 return redirect(url_for('transaksi'))
         else:
             flash('Tidak ada item valid atau stok tidak mencukupi.', 'danger')
@@ -949,5 +960,15 @@ def kirim_struk_wa(id_transaksi):
     return redirect(whatsapp_url)
 
 # ============================================================
+# ERROR HANDLERS
+# ============================================================
+@app.errorhandler(404)
+def page_not_found(e):
+    return render_template('404.html'), 404
+
+@app.errorhandler(500)
+def internal_server_error(e):
+    return render_template('500.html'), 500
+
 if __name__ == '__main__':
     app.run(debug=True)

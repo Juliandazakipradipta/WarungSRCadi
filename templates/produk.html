@@ -94,7 +94,7 @@
 
             <!-- Aksi -->
             <div class="produk-actions">
-                <button class="btn btn-secondary btn-sm" onclick="bukaEditProduk({
+                <button class="btn btn-secondary btn-sm btn-edit" data-id="{{ p.id_produk }}" onclick="bukaEditProduk({
                         id: {{ p.id_produk }},
                         nama: '{{ p.nama_produk|escape }}',
                         kategori: '{{ p.kategori|escape }}',

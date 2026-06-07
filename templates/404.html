@@ -1,0 +1,15 @@
+{% extends 'base.html' %}
+{% block title %}Halaman Tidak Ditemukan - Warung SRC Adi{% endblock %}
+{% block content %}
+<div style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 70vh; text-align: center; padding: 24px;">
+    <div style="font-size: 80px; font-weight: 800; color: var(--primary); margin-bottom: 16px; line-height: 1;">404</div>
+    <h1 style="font-size: 24px; font-weight: 800; color: var(--text); margin-bottom: 8px;">Halaman Tidak Ditemukan</h1>
+    <p style="color: var(--muted); max-width: 450px; margin-bottom: 24px; font-size: 14px; line-height: 1.6;">
+        Maaf, halaman yang Anda cari tidak dapat ditemukan atau telah dipindahkan. Pastikan alamat URL yang ditulis sudah benar.
+    </p>
+    <a href="{{ url_for('dashboard') }}" class="btn btn-primary">
+        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="width: 16px; height: 16px; margin-right: 4px;"><path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+        Kembali ke Dashboard
+    </a>
+</div>
+{% endblock %}

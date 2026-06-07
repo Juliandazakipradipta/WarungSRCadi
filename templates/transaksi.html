@@ -25,16 +25,19 @@
                 <div class="card-header"><div class="card-title">Info Transaksi</div></div>
                 <div class="card-body">
                     <div class="form-group">
-                        <label>Pelanggan</label>
-                        <input type="text" id="pelangganSearch" name="pelangganSearch" placeholder="Ketik nomor WA..." 
-                            list="pelangganList" oninput="updateNamaDariWA()" style="margin-bottom:8px">
+                        <label>Nomor WhatsApp Pelanggan <span style="color:#DC2626">*</span></label>
+                        <input type="text" id="pelangganSearch" name="pelangganSearch" placeholder="Ketik nomor WA (contoh: 08123456789)..." 
+                            list="pelangganList" oninput="updateNamaDariWA()" style="margin-bottom:8px" autocomplete="off">
                         <datalist id="pelangganList">
                             {% for p in pelanggan_list %}
-                            <option value="{{ p.no_whatsapp }}">
+                            <option value="{{ p.no_whatsapp }}" label="{{ p.no_whatsapp }}">
                             {% endfor %}
                         </datalist>
                         <input type="hidden" name="id_pelanggan" id="idPelanggan">
-                        <small id="hintPelanggan" style="color:#6B7280;font-size:12px;margin-top:8px;display:none">Nomor WA belum terdaftar — akan dibuat pelanggan baru saat simpan transaksi</small>
+                        <!-- Muncul saat WA sudah terdaftar -->
+                        <small id="hintTerdaftar" style="color:#059669;font-size:12px;margin-top:4px;display:none">✅ Pelanggan ditemukan</small>
+                        <!-- Muncul saat WA belum terdaftar -->
+                        <small id="hintBaru" style="color:#92400E;font-size:12px;margin-top:4px;display:none">⚠️ Nomor WA baru — akan otomatis terdaftar saat simpan transaksi</small>
                     </div>
                     <div class="form-row">
                         <div class="form-group">
@@ -94,7 +97,7 @@
                         <div class="total-note">Sesuai item yang dipilih</div>
                     </div>
 
-                    <button type="submit" class="btn btn-success btn-save">
+                    <button type="button" class="btn btn-success btn-save" onclick="validasiDanSimpan()">
                         <span>💾 Simpan Transaksi</span>
                     </button>
                 </div>
@@ -277,27 +280,62 @@ tambahBaris();
 // Data pelanggan dari Flask
 const pelangganData = {{ pelanggan_list | tojson }};
 
-// Update nama pelanggan berdasarkan nomor WA yang diketik
+// Update info pelanggan berdasarkan nomor WA yang diketik
 function updateNamaDariWA() {
     const input = document.getElementById('pelangganSearch');
     const idInput = document.getElementById('idPelanggan');
-    const hint = document.getElementById('hintPelanggan');
+    const hintTerdaftar = document.getElementById('hintTerdaftar');
+    const hintBaru = document.getElementById('hintBaru');
     const wa = input.value.trim();
 
     if (!wa) {
         idInput.value = '';
-        hint.style.display = 'none';
+        hintTerdaftar.style.display = 'none';
+        hintBaru.style.display = 'none';
+        input.style.border = '';
         return;
     }
 
     const pelanggan = pelangganData.find(p => p.no_whatsapp === wa);
     if (pelanggan) {
+        // WA sudah terdaftar
         idInput.value = pelanggan.id_pelanggan;
-        hint.style.display = 'none';
+        hintTerdaftar.style.display = 'block';
+        hintBaru.style.display = 'none';
+        input.style.border = '1.5px solid #059669';
     } else {
+        // WA belum terdaftar — akan otomatis didaftarkan saat simpan
         idInput.value = '';
-        hint.style.display = 'block';
+        hintTerdaftar.style.display = 'none';
+        hintBaru.style.display = 'block';
+        input.style.border = '1.5px solid #F59E0B';
     }
+}
+
+// Validasi sebelum submit transaksi
+function validasiDanSimpan() {
+    const waInput = document.getElementById('pelangganSearch');
+    const wa = waInput.value.trim();
+
+    if (!wa) {
+        waInput.style.border = '1.5px solid #DC2626';
+        waInput.focus();
+        alert('Nomor WhatsApp pelanggan wajib diisi!');
+        return;
+    }
+    waInput.style.border = '';
+
+    const itemContainer = document.getElementById('itemContainer');
+    const produkIds = itemContainer.querySelectorAll('[name="produk_id[]"]');
+    let adaItem = false;
+    produkIds.forEach(el => { if (el.value) adaItem = true; });
+
+    if (!adaItem) {
+        alert('Minimal satu produk harus ditambahkan!');
+        return;
+    }
+
+    document.getElementById('formTrx').submit();
 }
 
 // Filter riwayat berdasarkan tanggal yang dipilih

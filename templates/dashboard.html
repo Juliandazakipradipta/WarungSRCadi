@@ -22,7 +22,7 @@
         <div class="alert-stok-title" style="color:#BE123C">🗓️ Peringatan Kedaluwarsa! {{ produk_kadaluarsa|length }} produk perlu diperhatikan.</div>
         <div class="alert-stok-body" style="color:#9F1239">
             {% for p in produk_kadaluarsa %}
-                <strong>{{ p.nama_produk }}</strong> — {{ p.status_expired }}{% if p.expired_date %} ({{ p.expired_date.strftime('%d/%m/%Y') }}){% endif %}
+                <strong><a href="{{ url_for('produk') }}?edit={{ p.id_produk }}" style="color:#BE123C;text-decoration:underline">{{ p.nama_produk }}</a></strong> — {{ p.status_expired }}{% if p.expired_date %} ({{ p.expired_date.strftime('%d/%m/%Y') }}){% endif %}
                 {% if not loop.last %} &nbsp;|&nbsp; {% endif %}
             {% endfor %}
         </div>
@@ -37,7 +37,7 @@
         <div class="alert-stok-title">⚠️ Stok Kritis! {{ produk_kritis|length }} produk hampir habis.</div>
         <div class="alert-stok-body">
             {% for p in produk_kritis %}
-                <strong>{{ p.nama_produk }}</strong> — sisa {{ p.stok }} {{ p.satuan }} (min. {{ p.stok_minimum }})
+                <strong><a href="{{ url_for('produk') }}?edit={{ p.id_produk }}" style="color:#C2410C;text-decoration:underline">{{ p.nama_produk }}</a></strong> — sisa {{ p.stok }} {{ p.satuan }} (min. {{ p.stok_minimum }})
                 {% if not loop.last %} &nbsp;|&nbsp; {% endif %}
             {% endfor %}
         </div>
@@ -153,7 +153,7 @@
         {% if produk_kritis %}
         <div style="display:flex;flex-direction:column;gap:10px">
             {% for p in produk_kritis %}
-            <div style="padding:14px 16px;border:1px solid #F3F4F6;border-radius:14px;display:flex;justify-content:space-between;align-items:center;gap:12px;">
+            <div onclick="window.location='{{ url_for('produk') }}?edit={{ p.id_produk }}'" style="padding:14px 16px;border:1px solid #F3F4F6;border-radius:14px;display:flex;justify-content:space-between;align-items:center;gap:12px;cursor:pointer;transition:background 0.2s" onmouseover="this.style.background='#f3f4f6'" onmouseout="this.style.background='transparent'">
                 <div>
                     <div style="font-weight:700">{{ p.nama_produk }}</div>
                     <div style="font-size:12px;color:var(--muted)">Stok: {{ p.stok }} {{ p.satuan }} · Min: {{ p.stok_minimum }}</div>
@@ -178,7 +178,7 @@
         {% if produk_kadaluarsa %}
         <div style="display:flex;flex-direction:column;gap:10px">
             {% for p in produk_kadaluarsa %}
-            <div style="padding:14px 16px;border:1px solid #F3F4F6;border-radius:14px;display:flex;justify-content:space-between;align-items:center;gap:12px;">
+            <div onclick="window.location='{{ url_for('produk') }}?edit={{ p.id_produk }}'" style="padding:14px 16px;border:1px solid #F3F4F6;border-radius:14px;display:flex;justify-content:space-between;align-items:center;gap:12px;cursor:pointer;transition:background 0.2s" onmouseover="this.style.background='#f3f4f6'" onmouseout="this.style.background='transparent'">
                 <div>
                     <div style="font-weight:700">{{ p.nama_produk }}</div>
                     <div style="font-size:12px;color:#BE123C">📅 {{ p.status_expired }}{% if p.expired_date %} — {{ p.expired_date.strftime('%d/%m/%Y') }}{% endif %}</div>

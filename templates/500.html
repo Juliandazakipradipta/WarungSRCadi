@@ -1,0 +1,19 @@
+{% extends 'base.html' %}
+{% block title %}Kesalahan Server Internal - Warung SRC Adi{% endblock %}
+{% block content %}
+<div style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 70vh; text-align: center; padding: 24px;">
+    <div style="font-size: 80px; font-weight: 800; color: var(--danger); margin-bottom: 16px; line-height: 1;">500</div>
+    <h1 style="font-size: 24px; font-weight: 800; color: var(--text); margin-bottom: 8px;">Kesalahan Server Internal</h1>
+    <p style="color: var(--muted); max-width: 500px; margin-bottom: 24px; font-size: 14px; line-height: 1.6;">
+        Terjadi kesalahan internal pada server database atau aplikasi. Silakan coba muat ulang halaman atau hubungi administrator jika masalah berlanjut.
+    </p>
+    <div style="display: flex; gap: 12px; justify-content: center;">
+        <a href="javascript:location.reload();" class="btn btn-outline">
+            Muat Ulang Halaman
+        </a>
+        <a href="{{ url_for('dashboard') }}" class="btn btn-primary">
+            Kembali ke Dashboard
+        </a>
+    </div>
+</div>
+{% endblock %}

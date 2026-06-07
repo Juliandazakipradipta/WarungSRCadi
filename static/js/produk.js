@@ -22,3 +22,14 @@ function bukaEditProduk(prod) {
 document.querySelectorAll('.modal-overlay').forEach(el => {
     el.addEventListener('click', e => { if (e.target === el) el.classList.remove('show'); });
 });
+
+document.addEventListener('DOMContentLoaded', () => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const editId = urlParams.get('edit');
+    if (editId) {
+        const editBtn = document.querySelector(`.btn-edit[data-id="${editId}"]`);
+        if (editBtn) {
+            editBtn.click();
+        }
+    }
+});
