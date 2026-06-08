@@ -47,6 +47,7 @@
 
 <!-- Statistik -->
 <div class="stats-grid">
+    {% if session.get('role') == 'owner' %}
     <div class="stat-card">
         <div class="stat-icon" style="background:#EDE9FE">💰</div>
         <div class="stat-label">Omzet Hari Ini</div>
@@ -59,6 +60,7 @@
         <div class="stat-value" style="color:#059669">Rp {{ "{:,.0f}".format(keuntungan_hari).replace(',', '.') }}</div>
         <div class="stat-sub">Klik untuk lihat laporan →</div>
     </div>
+    {% endif %}
     <div class="stat-card">
         <div class="stat-icon" style="background:#D1FAE5">📦</div>
         <div class="stat-label">Total Produk</div>
@@ -118,12 +120,14 @@
     <div class="card">
         <div class="card-header">
             <div class="card-title">Produk Terlaris</div>
+            {% if session.get('role') == 'owner' %}
             <a href="{{ url_for('laporan') }}" style="font-size:13px;color:#7C3AED;text-decoration:none;font-weight:600">Laporan →</a>
+            {% endif %}
         </div>
         <div style="max-height: 250px; overflow-y: auto; position: relative;">
             <table style="margin-bottom: 0;">
                 <thead style="position: sticky; top: 0; z-index: 10; background: #FAFAFA;">
-                    <tr><th>Produk</th><th>Terjual</th><th>Pendapatan</th></tr>
+                    <tr><th>Produk</th><th>Terjual</th>{% if session.get('role') == 'owner' %}<th>Pendapatan</th>{% endif %}</tr>
                 </thead>
                 <tbody>
                 {% if produk_terlaris %}
@@ -134,7 +138,9 @@
                             <div style="font-size:12px;color:#6B7280">{{ pl.kategori }}</div>
                         </td>
                         <td><span class="badge badge-info">{{ pl.total_terjual }} pcs</span></td>
+                        {% if session.get('role') == 'owner' %}
                         <td style="font-weight:700">Rp {{ "{:,.0f}".format(pl.total_pendapatan).replace(',', '.') }}</td>
+                        {% endif %}
                     </tr>
                     {% endfor %}
                 {% else %}

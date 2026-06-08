@@ -1,9 +1,10 @@
-from flask import Flask, render_template, request, redirect, url_for, flash
+from flask import Flask, render_template, request, redirect, url_for, flash, session
 from flask_mysqldb import MySQL
 from config import Config
 import requests
 from datetime import date
 import uuid
+from werkzeug.security import generate_password_hash, check_password_hash
 
 import os
 import urllib.parse
@@ -180,6 +181,93 @@ def kirim_whatsapp_fonnte(no_whatsapp, pesan):
             return False, f"Fonnte: {res_json.get('reason', 'Gagal mengirim')}"
     except Exception as e:
         return False, f"Koneksi gagal: {str(e)}"
+
+
+# ============================================================
+# MIDDLEWARE & INITIALIZATION
+# ============================================================
+_db_initialized = False
+
+@app.before_request
+def check_auth_and_init():
+    global _db_initialized
+    # 1. Inisialisasi Database (Buat Tabel Pengguna & User Default)
+    if not _db_initialized:
+        try:
+            cur = mysql.connection.cursor()
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS pengguna (
+                    id_user INT AUTO_INCREMENT PRIMARY KEY,
+                    username VARCHAR(50) UNIQUE NOT NULL,
+                    password VARCHAR(255) NOT NULL,
+                    role ENUM('owner', 'kasir') NOT NULL
+                )
+            """)
+            mysql.connection.commit()
+            
+            cur.execute("SELECT COUNT(*) AS total FROM pengguna")
+            if cur.fetchone()['total'] == 0:
+                cur.execute("""
+                    INSERT INTO pengguna (username, password, role) VALUES 
+                    ('owner', %s, 'owner'),
+                    ('kasir', %s, 'kasir')
+                """, (generate_password_hash('owner123'), generate_password_hash('kasir123')))
+                mysql.connection.commit()
+            cur.close()
+            _db_initialized = True
+        except Exception as e:
+            print("DB Init Error:", e)
+
+    # 2. Pengecualian Rute Publik (Login, Static)
+    if request.path.startswith('/static') or request.path == '/login':
+        return
+
+    # 3. Proteksi Halaman (Harus Login)
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+
+    # 4. Proteksi Hak Akses (Kasir tidak boleh mengakses Laporan/Fitur Telegram)
+    if session.get('role') != 'owner':
+        restricted_paths = ['/laporan', '/test-telegram', '/kirim-notif-manual']
+        if request.path in restricted_paths or request.path.startswith('/laporan/') or request.path.startswith('/test-telegram/'):
+            flash('Akses Ditolak: Hanya Owner yang dapat mengakses fitur tersebut.', 'danger')
+            return redirect(url_for('dashboard'))
+
+
+# ============================================================
+# ROUTE: Authentication
+# ============================================================
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if 'user_id' in session:
+        return redirect(url_for('dashboard'))
+        
+    if request.method == 'POST':
+        username = request.form.get('username')
+        password = request.form.get('password')
+        
+        cur = mysql.connection.cursor()
+        cur.execute("SELECT * FROM pengguna WHERE username = %s", (username,))
+        user = cur.fetchone()
+        cur.close()
+        
+        if user and check_password_hash(user['password'], password):
+            session['user_id'] = user['id_user']
+            session['username'] = user['username']
+            session['role'] = user['role']
+            flash(f"Selamat datang kembali, {user['username']} ({user['role'].upper()})!", "success")
+            return redirect(url_for('dashboard'))
+        else:
+            flash("Username atau password salah.", "danger")
+            
+    return render_template('login.html')
+
+@app.route('/logout')
+def logout():
+    session.clear()
+    flash("Anda telah berhasil logout.", "success")
+    return redirect(url_for('login'))
+
 
 # ============================================================
 # ROUTE: Dashboard
