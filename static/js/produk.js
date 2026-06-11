@@ -1,35 +1,38 @@
-// Script dari produk.html dipindahkan ke file ini
-function bukaRestock(id, nama, stok, expiredDate) {
-    document.getElementById('restockId').value = id;
-    document.getElementById('restockExpiredDate').value = expiredDate || '';
-    document.getElementById('restockInfo').textContent = `Produk: ${nama} | Stok saat ini: ${stok} pcs`;
+// Buka modal Restock — pakai data-* attribute dari button
+function bukaRestock(btn) {
+    const d = btn.dataset;
+    document.getElementById('restockId').value = d.id;
+    document.getElementById('restockExpiredDate').value = d.expired || '';
+    document.getElementById('restockInfo').textContent = `Produk: ${d.nama} | Stok saat ini: ${d.stok}`;
     document.getElementById('modalRestock').classList.add('show');
 }
 
-function bukaEditProduk(prod) {
-    document.getElementById('editIdProduk').value = prod.id;
-    document.getElementById('editNamaProduk').value = prod.nama;
-    document.getElementById('editKategori').value = prod.kategori;
-    document.getElementById('editHargaBeli').value = prod.harga_beli;
-    document.getElementById('editHargaJual').value = prod.harga_jual;
-    document.getElementById('editStok').value = prod.stok;
-    document.getElementById('editStokMinimum').value = prod.stok_minimum;
-    document.getElementById('editSatuan').value = prod.satuan;
-    document.getElementById('editExpiredDate').value = prod.expired_date || '';
+// Buka modal Edit — pakai data-* attribute dari button
+function bukaEditProduk(btn) {
+    const d = btn.dataset;
+    document.getElementById('editIdProduk').value = d.id;
+    document.getElementById('editNamaProduk').value = d.nama;
+    document.getElementById('editKategori').value = d.kategori;
+    document.getElementById('editHargaBeli').value = d.hargaBeli;
+    document.getElementById('editHargaJual').value = d.hargaJual;
+    document.getElementById('editStok').value = d.stok;
+    document.getElementById('editStokMinimum').value = d.stokMinimum;
+    document.getElementById('editSatuan').value = d.satuan;
+    document.getElementById('editExpiredDate').value = d.expired || '';
     document.getElementById('modalEdit').classList.add('show');
 }
 
+// Tutup modal kalau klik di luar area modal
 document.querySelectorAll('.modal-overlay').forEach(el => {
     el.addEventListener('click', e => { if (e.target === el) el.classList.remove('show'); });
 });
 
+// Auto buka modal edit jika URL mengandung ?edit=id
 document.addEventListener('DOMContentLoaded', () => {
     const urlParams = new URLSearchParams(window.location.search);
     const editId = urlParams.get('edit');
     if (editId) {
         const editBtn = document.querySelector(`.btn-edit[data-id="${editId}"]`);
-        if (editBtn) {
-            editBtn.click();
-        }
+        if (editBtn) editBtn.click();
     }
 });

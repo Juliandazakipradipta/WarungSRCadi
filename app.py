@@ -12,15 +12,21 @@ import urllib.parse
 
 UNIT_DEFAULT_PCS = {
     'pcs': 1,
+    'bungkus': 1,  
+    'botol': 1,
+    'kaleng': 1,
+    'pack': 1,
+    'karung': 1,
+    'pouch': 1,
     'lusin': 12,
     'box': 10,
 }
 
 CATEGORIES = [
-    'Beras', 'Minyak', 'Gula', 'Tepung', 'Bumbu & Bahan Masak',
-    'Mie Instan', 'Makanan Kaleng', 'Susu', 'Air Mineral', 'Minuman',
-    'Snack & Biskuit', 'Kebutuhan Rumah Tangga', 'Perawatan Diri',
-    'Produk Bayi', 'Rokok', 'Lainnya'
+    'Sembako', 'Mi Instan', 'Makanan Instan', 'Minuman', 
+    'Makanan Ringan', 'Camilan', 'Bahan Dapur', 
+    'Perlengkapan Mandi', 'Kebutuhan Mencuci', 
+    'Rumah Tangga', 'Kesehatan', 'Lainnya'
 ]
 
 UNIT_LIST = [
@@ -135,10 +141,16 @@ def get_struk_text(id_transaksi, cursor):
 📅 Tanggal: *{transaksi_data['tanggal_transaksi'].strftime('%d/%m/%Y')}*
 
 *─ DETAIL ITEM ─*"""
+    cursor.execute("""
+    SELECT pr.nama_produk, pr.satuan, dt.jumlah, dt.harga_satuan, dt.subtotal
+    FROM detail_transaksi dt
+    JOIN produk pr ON dt.id_produk = pr.id_produk
+    WHERE dt.id_transaksi = %s
+""", (id_transaksi,))
+    detail_items = cursor.fetchall()
 
     for item in detail_items:
-        pesan_wa += f"\n• {item['nama_produk']}\n  {item['jumlah']} pcs × Rp {int(item['harga_satuan']):,} = Rp {int(item['subtotal']):,}"
-    
+        pesan_wa += f"\n• {item['nama_produk']}\n  {item['jumlah']} {item['satuan']} × Rp {int(item['harga_satuan']):,} = Rp {int(item['subtotal']):,}"
     pesan_wa += f"""
 
 ━━━━━━━━━━━━━━━━━━━━━━━━
@@ -402,6 +414,12 @@ def produk():
     if request.method == 'POST':
         action = request.form.get('action')
 
+        # Proteksi: kasir hanya boleh restock
+        if session.get('role') != 'owner' and action in ('tambah', 'edit', 'hapus'):
+            flash('Akses Ditolak: Hanya Owner yang dapat menambah, mengedit, atau menghapus produk.', 'danger')
+            cur.close()
+            return redirect(url_for('produk'))
+
         # Tambah produk baru
         if action == 'tambah':
             nama         = request.form['nama_produk']
@@ -484,11 +502,33 @@ def produk():
         return redirect(url_for('produk'))
 
     kategori_filter = request.args.get('kategori_filter', '')
-    where_clause = ''
-    params = ()
+    expired_filter = request.args.get('expired_filter', '')
+    stok_filter = request.args.get('stok_filter', '')
+
+    conditions = []
+    params = []
+
     if kategori_filter:
-        where_clause = 'WHERE p.kategori = %s'
-        params = (kategori_filter,)
+        conditions.append('p.kategori = %s')
+        params.append(kategori_filter)
+
+    if expired_filter == 'expired':
+        conditions.append('p.expired_date IS NOT NULL AND p.expired_date < CURDATE()')
+    elif expired_filter == 'hampir':
+        conditions.append('p.expired_date IS NOT NULL AND p.expired_date >= CURDATE() AND p.expired_date <= DATE_ADD(CURDATE(), INTERVAL 7 DAY)')
+    elif expired_filter == 'aman':
+        conditions.append('(p.expired_date IS NULL OR p.expired_date > DATE_ADD(CURDATE(), INTERVAL 7 DAY))')
+
+    if stok_filter == 'kritis':
+        conditions.append('p.stok <= p.stok_minimum AND p.stok > 0')
+    elif stok_filter == 'habis':
+        conditions.append('p.stok <= 0')
+    elif stok_filter == 'aman':
+        conditions.append('p.stok > p.stok_minimum')
+
+    where_clause = ''
+    if conditions:
+        where_clause = 'WHERE ' + ' AND '.join(conditions)
 
     # GET: ambil semua produk dengan informasi keuntungan
     cur.execute(f"""
@@ -512,7 +552,7 @@ def produk():
         {where_clause}
         GROUP BY p.id_produk
         ORDER BY p.id_produk DESC
-    """, params)
+    """, tuple(params))
     produk_list = cur.fetchall()
     for p in produk_list:
         if p['satuan'] in ['box', 'lusin']:
@@ -524,7 +564,8 @@ def produk():
     cur.close()
     return render_template('produk.html', produk_list=produk_list,
         kategori_list=CATEGORIES, satuan_list=UNIT_LIST,
-        kategori_filter=kategori_filter)
+        kategori_filter=kategori_filter, expired_filter=expired_filter, stok_filter=stok_filter)
+
 
 # ============================================================
 # ROUTE: Transaksi
@@ -584,12 +625,18 @@ def transaksi():
                 continue
             pid = int(pid)
             jml = int(jumlah_arr[i])
-            cur.execute("SELECT harga_jual, stok FROM produk WHERE id_produk = %s", (pid,))
+            cur.execute("SELECT harga_jual, stok, satuan FROM produk WHERE id_produk = %s", (pid,))
             pr = cur.fetchone()
             if pr and pr['stok'] >= jml:
                 sub = pr['harga_jual'] * jml
                 total += sub
-                items.append({'id': pid, 'jml': jml, 'harga': pr['harga_jual'], 'sub': sub})
+                items.append({
+                    'id': pid,
+                    'jml': jml,
+                    'harga': pr['harga_jual'],
+                    'sub': sub,
+                    'satuan': pr['satuan']
+                })
 
         if items:
             try:
@@ -605,6 +652,21 @@ def transaksi():
                         INSERT INTO detail_transaksi (id_transaksi, id_produk, jumlah, harga_satuan, subtotal)
                         VALUES (%s, %s, %s, %s, %s)
                     """, (id_trx, it['id'], it['jml'], it['harga'], it['sub']))
+                    
+                    # Kurangi stok
+                    cur.execute("""
+                        UPDATE produk SET stok = stok - %s
+                        WHERE id_produk = %s
+                    """, (it['jml'], it['id']))
+
+                    # Catat log stok keluar
+                    cur.execute("SELECT stok FROM produk WHERE id_produk = %s", (it['id'],))
+                    stok_baru = cur.fetchone()['stok']
+                    stok_lama = stok_baru + it['jml']
+                    cur.execute("""
+                        INSERT INTO log_stok (id_produk, jenis, jumlah, stok_sebelum, stok_sesudah, keterangan)
+                        VALUES (%s, 'keluar', %s, %s, %s, 'Transaksi penjualan')
+                    """, (it['id'], it['jml'], stok_lama, stok_baru))
 
                 mysql.connection.commit()
             except Exception as db_err:

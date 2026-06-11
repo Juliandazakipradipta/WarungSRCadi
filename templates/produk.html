@@ -8,19 +8,53 @@
         <p>Kelola produk retail sembako dan pantau stok serta tanggal kedaluwarsa</p>
     </div>
     <div style="display:flex;gap:8px;align-items:center">
-        <form method="GET" style="display:flex;gap:8px;align-items:center">
-            <label style="font-size:14px;color:var(--muted);margin:0">Filter:</label>
-            <select name="kategori_filter" onchange="this.form.submit()" style="padding:8px 10px;border:1.5px solid var(--border);border-radius:10px;background:#fff">
-                <option value="">Semua Kategori</option>
-                {% for cat in kategori_list %}
-                <option value="{{ cat }}" {% if kategori_filter == cat %}selected{% endif %}>{{ cat }}</option>
-                {% endfor %}
-            </select>
+        <form method="GET" style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+            <div style="display:flex;align-items:center;gap:6px">
+                <label
+                    style="font-size:13px;color:var(--muted);font-weight:600;margin:0;white-space:nowrap">Kategori:</label>
+                <select name="kategori_filter" onchange="this.form.submit()"
+                    style="padding:7px 12px;border:1.5px solid var(--border);border-radius:8px;font-family:inherit;font-size:13px;outline:none;cursor:pointer;background:#fff">
+                    <option value="">Semua Kategori</option>
+                    {% for cat in kategori_list %}
+                    <option value="{{ cat }}" {% if kategori_filter==cat %}selected{% endif %}>{{ cat }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div style="display:flex;align-items:center;gap:6px">
+                <label style="font-size:13px;color:var(--muted);font-weight:600;margin:0;white-space:nowrap">Status
+                    Kadaluarsa:</label>
+                <select name="expired_filter" onchange="this.form.submit()"
+                    style="padding:7px 12px;border:1.5px solid var(--border);border-radius:8px;font-family:inherit;font-size:13px;outline:none;cursor:pointer;background:#fff">
+                    <option value="">Semua Status</option>
+                    <option value="expired" {% if expired_filter=='expired' %}selected{% endif %}>🔴 Sudah Kadaluarsa
+                    </option>
+                    <option value="hampir" {% if expired_filter=='hampir' %}selected{% endif %}>⚠️ Hampir Kadaluarsa (≤
+                        7 Hari)</option>
+                    <option value="aman" {% if expired_filter=='aman' %}selected{% endif %}>🟢 Belum Kadaluarsa / Aman
+                    </option>
+                </select>
+            </div>
+            <div style="display:flex;align-items:center;gap:6px">
+                <label style="font-size:13px;color:var(--muted);font-weight:600;margin:0;white-space:nowrap">Status
+                    Stok:</label>
+                <select name="stok_filter" onchange="this.form.submit()"
+                    style="padding:7px 12px;border:1.5px solid var(--border);border-radius:8px;font-family:inherit;font-size:13px;outline:none;cursor:pointer;background:#fff">
+                    <option value="">Semua Stok</option>
+                    <option value="kritis" {% if stok_filter=='kritis' %}selected{% endif %}>🔴 Stok Kritis</option>
+                    <option value="habis" {% if stok_filter=='habis' %}selected{% endif %}>⛔ Stok Habis</option>
+                    <option value="aman" {% if stok_filter=='aman' %}selected{% endif %}>🟢 Stok Aman</option>
+                </select>
+            </div>
         </form>
+
+        {% if session.get('role') == 'owner' %}
         <button class="btn btn-primary" onclick="document.getElementById('modalTambah').classList.add('show')">
-            <svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M12 4v16m8-8H4"/></svg>
+            <svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                <path d="M12 4v16m8-8H4" />
+            </svg>
             Tambah Produk
         </button>
+        {% endif %}
     </div>
 </div>
 
@@ -33,7 +67,8 @@
     <div class="produk-grid">
         {% for p in produk_list %}
         {% set pct = [((p.stok / (p.stok_minimum * 3)) * 100)|int, 100]|min if p.stok_minimum > 0 else 100 %}
-        {% set bar_color = '#10B981' if p.status_stok == 'Aman' else ('#F59E0B' if p.status_stok == 'Rendah' else '#EF4444') %}
+        {% set bar_color = '#10B981' if p.status_stok == 'Aman' else ('#F59E0B' if p.status_stok == 'Rendah' else
+        '#EF4444') %}
         <div class="produk-card">
             <!-- Header -->
             <div class="produk-card-header">
@@ -41,7 +76,9 @@
                     <h3 class="produk-nama">{{ p.nama_produk }}</h3>
                     <span class="badge badge-info" style="font-size:11px">{{ p.kategori }}</span>
                 </div>
-                <span class="badge {% if p.status_expired == 'Expired' %}badge-danger{% elif p.status_expired == 'Hampir Kadaluarsa' %}badge-warning{% elif p.status_stok == 'Aman' %}badge-success{% elif p.status_stok == 'Rendah' %}badge-warning{% elif p.status_stok == 'Kritis' %}badge-danger{% else %}badge-danger{% endif %}" style="white-space:nowrap">
+                <span
+                    class="badge {% if p.status_expired == 'Expired' %}badge-danger{% elif p.status_expired == 'Hampir Kadaluarsa' %}badge-warning{% elif p.status_stok == 'Aman' %}badge-success{% elif p.status_stok == 'Rendah' %}badge-warning{% elif p.status_stok == 'Kritis' %}badge-danger{% else %}badge-danger{% endif %}"
+                    style="white-space:nowrap">
                     {% if p.status_expired == 'Expired' %}🔴 Kadaluarsa
                     {% elif p.status_expired == 'Hampir Kadaluarsa' %}⚠️ Hampir Kadaluarsa
                     {% elif p.status_stok == 'Aman' %}✓ Aman
@@ -57,10 +94,13 @@
                     <span class="harga-label">Harga Jual</span>
                     <span class="harga-value">Rp {{ "{:,.0f}".format(p.harga_jual).replace(',', '.') }}</span>
                 </div>
+                {% if session.get('role') == 'owner' %}
                 <div class="harga-item">
                     <span class="harga-label">Margin</span>
-                    <span class="harga-value" style="color:#059669">Rp {{ "{:,.0f}".format(p.margin_keuntungan).replace(',', '.') }}</span>
+                    <span class="harga-value" style="color:#059669">Rp {{
+                        "{:,.0f}".format(p.margin_keuntungan).replace(',', '.') }}</span>
                 </div>
+                {% endif %}
             </div>
 
             <!-- Stok & Kedaluwarsa -->
@@ -88,33 +128,37 @@
                 </div>
                 <div class="stat-box">
                     <span>Keuntungan</span>
-                    <strong style="color:#059669">Rp {{ "{:,.0f}".format(p.total_keuntungan).replace(',', '.') }}</strong>
+                    <strong style="color:#059669">Rp {{ "{:,.0f}".format(p.total_keuntungan).replace(',', '.')
+                        }}</strong>
                 </div>
             </div>
 
             <!-- Aksi -->
             <div class="produk-actions">
-                <button class="btn btn-secondary btn-sm btn-edit" data-id="{{ p.id_produk }}" onclick="bukaEditProduk({
-                        id: {{ p.id_produk }},
-                        nama: '{{ p.nama_produk|escape }}',
-                        kategori: '{{ p.kategori|escape }}',
-                        harga_beli: {{ p.harga_beli }},
-                        harga_jual: {{ p.harga_jual }},
-                        stok: {{ p.stok }},
-                        stok_minimum: {{ p.stok_minimum }},
-                        satuan: '{{ p.satuan }}',
-                        expired_date: '{{ p.expired_date.strftime('%Y-%m-%d') if p.expired_date else '' }}'
-                    })">
+                {% if session.get('role') == 'owner' %}
+                <button class="btn btn-secondary btn-sm btn-edit" data-id="{{ p.id_produk }}"
+                    data-nama="{{ p.nama_produk }}" data-kategori="{{ p.kategori }}"
+                    data-harga-beli="{{ p.harga_beli }}" data-harga-jual="{{ p.harga_jual }}" data-stok="{{ p.stok }}"
+                    data-stok-minimum="{{ p.stok_minimum }}" data-satuan="{{ p.satuan }}"
+                    data-expired="{{ p.expired_date.strftime('%Y-%m-%d') if p.expired_date else '' }}"
+                    onclick="bukaEditProduk(this)">
                     ✏️ Edit
                 </button>
-                <button class="btn btn-success btn-sm" onclick="bukaRestock({{ p.id_produk }}, '{{ p.nama_produk }}', {{ p.stok }}, '{{ p.expired_date.strftime('%Y-%m-%d') if p.expired_date else '' }}')">
+                {% endif %}
+                {# Tombol Restock — pakai data-* untuk hindari SyntaxError JS #}
+                <button class="btn btn-success btn-sm" data-id="{{ p.id_produk }}" data-nama="{{ p.nama_produk }}"
+                    data-stok="{{ p.stok }}"
+                    data-expired="{{ p.expired_date.strftime('%Y-%m-%d') if p.expired_date else '' }}"
+                    onclick="bukaRestock(this)">
                     ⬆️ Restock
                 </button>
+                {% if session.get('role') == 'owner' %}
                 <form method="POST" style="display:inline" onsubmit="return confirm('Yakin hapus produk ini?')">
                     <input type="hidden" name="action" value="hapus">
                     <input type="hidden" name="id_produk" value="{{ p.id_produk }}">
                     <button type="submit" class="btn btn-danger btn-sm">🗑️ Hapus</button>
                 </form>
+                {% endif %}
             </div>
         </div>
         {% endfor %}
@@ -153,7 +197,8 @@
                         <option value="{{ unit }}">{{ unit }}</option>
                         {% endfor %}
                     </select>
-                    <div class="form-hint">Box/lusin dikonversi otomatis ke pcs. Untuk satuan lainnya, stok disimpan sesuai satuan asli.</div>
+                    <div class="form-hint">Box/lusin dikonversi otomatis ke pcs. Untuk satuan lainnya, stok disimpan
+                        sesuai satuan asli.</div>
                 </div>
             </div>
             <div class="form-row">
@@ -170,7 +215,8 @@
                 <div class="form-group">
                     <label>Stok Awal</label>
                     <input type="number" name="stok" required min="0" value="0">
-                    <div class="form-hint">Masukkan jumlah unit sesuai satuan. Jika pilih box, 1 box dihitung 10 pcs.</div>
+                    <div class="form-hint">Masukkan jumlah unit sesuai satuan. Jika pilih box, 1 box dihitung 10 pcs.
+                    </div>
                 </div>
                 <div class="form-group">
                     <label>Stok Minimum</label>
@@ -184,7 +230,8 @@
                 <div class="form-hint">Kosongkan jika produk tidak memiliki tanggal kedaluwarsa.</div>
             </div>
             <div class="modal-actions">
-                <button type="button" class="btn btn-outline" onclick="document.getElementById('modalTambah').classList.remove('show')">Batal</button>
+                <button type="button" class="btn btn-outline"
+                    onclick="document.getElementById('modalTambah').classList.remove('show')">Batal</button>
                 <button type="submit" class="btn btn-primary">Simpan Produk</button>
             </div>
         </form>
@@ -200,7 +247,8 @@
             <input type="hidden" name="id_produk" id="editIdProduk">
             <div class="form-group">
                 <label>Nama Produk</label>
-                <input type="text" name="nama_produk" id="editNamaProduk" required placeholder="contoh: Beras Cap Koki 5kg">
+                <input type="text" name="nama_produk" id="editNamaProduk" required
+                    placeholder="contoh: Beras Cap Koki 5kg">
             </div>
             <div class="form-row">
                 <div class="form-group">
@@ -218,7 +266,8 @@
                         <option value="{{ unit }}">{{ unit }}</option>
                         {% endfor %}
                     </select>
-                    <div class="form-hint">Box/lusin dikonversi otomatis ke pcs. Untuk satuan lainnya, stok disimpan sesuai satuan asli.</div>
+                    <div class="form-hint">Box/lusin dikonversi otomatis ke pcs. Untuk satuan lainnya, stok disimpan
+                        sesuai satuan asli.</div>
                 </div>
             </div>
             <div class="form-row">
@@ -248,7 +297,8 @@
                 <input type="date" name="expired_date" id="editExpiredDate">
             </div>
             <div class="modal-actions">
-                <button type="button" class="btn btn-outline" onclick="document.getElementById('modalEdit').classList.remove('show')">Batal</button>
+                <button type="button" class="btn btn-outline"
+                    onclick="document.getElementById('modalEdit').classList.remove('show')">Batal</button>
                 <button type="submit" class="btn btn-primary">Update Produk</button>
             </div>
         </form>
@@ -259,14 +309,17 @@
 <div class="modal-overlay" id="modalRestock">
     <div class="modal">
         <h2>Restock Stok</h2>
-        <p id="restockInfo" style="color:var(--muted);font-size:13.5px;margin-bottom:20px;padding:12px;background:var(--bg);border-radius:10px"></p>
+        <p id="restockInfo"
+            style="color:var(--muted);font-size:13.5px;margin-bottom:20px;padding:12px;background:var(--bg);border-radius:10px">
+        </p>
         <form method="POST">
             <input type="hidden" name="action" value="restock">
             <input type="hidden" name="id_produk" id="restockId">
             <div class="form-row">
                 <div class="form-group">
                     <label>Jumlah Restock</label>
-                    <input type="number" name="jumlah_restock" required min="1" placeholder="Masukkan jumlah barang masuk">
+                    <input type="number" name="jumlah_restock" required min="1"
+                        placeholder="Masukkan jumlah barang masuk">
                 </div>
                 <div class="form-group">
                     <label>Tanggal Kedaluwarsa</label>
@@ -275,7 +328,8 @@
                 </div>
             </div>
             <div class="modal-actions">
-                <button type="button" class="btn btn-outline" onclick="document.getElementById('modalRestock').classList.remove('show')">Batal</button>
+                <button type="button" class="btn btn-outline"
+                    onclick="document.getElementById('modalRestock').classList.remove('show')">Batal</button>
                 <button type="submit" class="btn btn-success">+ Tambah Stok</button>
             </div>
         </form>

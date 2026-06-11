@@ -72,14 +72,15 @@
                 </div>
                 <div class="card-body">
                     <div class="form-group" style="margin-bottom:16px">
-                        <label style="font-size:14px;font-weight:600;display:block;margin-bottom:8px">Filter Kategori Produk</label>
-                        <select id="filterKategoriProduk" onchange="perbaruiDatalistProduk()" style="width:100%;padding:10px;border:1.5px solid var(--border);border-radius:10px;background:#fff">
+                        <label style="font-size:13px;color:var(--muted);font-weight:600;display:block;margin-bottom:6px">Filter Kategori Produk</label>
+                        <select id="filterKategoriProduk" onchange="perbaruiDatalistProduk()" style="width:100%;padding:7px 12px;border:1.5px solid var(--border);border-radius:8px;font-family:inherit;font-size:13px;outline:none;cursor:pointer;background:#fff">
                             <option value="">Semua Kategori</option>
                             {% for kat in kategori_list %}
                             <option value="{{ kat }}">{{ kat }}</option>
                             {% endfor %}
                         </select>
                     </div>
+
                     <!-- Header kolom -->
                     <div class="item-baris item-header">
                         <span>Produk</span><span>Qty (pcs)</span><span>Subtotal</span><span></span>
@@ -116,12 +117,13 @@
                     {{ riwayat|length }} transaksi
                 </span>
             </div>
-            <div style="display:flex;align-items:center;gap:10px">
-                <label style="font-size:12px;color:var(--muted);font-weight:500;white-space:nowrap">Filter Tanggal:</label>
+            <div style="display:flex;align-items:center;gap:6px">
+                <label style="font-size:13px;color:var(--muted);font-weight:600;margin:0;white-space:nowrap">Tanggal:</label>
                 <input type="date" id="filterTanggal" value="{{ tanggal_filter }}"
                     onchange="filterBerdasarkanTanggal()"
-                    style="padding:7px 12px;border:1.5px solid var(--border);border-radius:8px;font-family:inherit;font-size:13px;outline:none;cursor:pointer">
+                    style="padding:7px 12px;border:1.5px solid var(--border);border-radius:8px;font-family:inherit;font-size:13px;outline:none;cursor:pointer;background:#fff">
             </div>
+
         </div>
         <div class="scrollable-table">
             <table>
