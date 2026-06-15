@@ -46,11 +46,22 @@
                         </div>
                         <div class="form-group">
                             <label>Metode Pembayaran</label>
-                            <select name="metode_pembayaran">
+                            <select name="metode_pembayaran" onchange="updatePembayaran()">
+                                <option value="tunai" selected>Tunai</option>
                                 <option value="transfer">Transfer Bank</option>
-                                <option value="tunai">Tunai</option>
                                 <option value="qris">QRIS</option>
                             </select>
+                        </div>
+                    </div>
+                    <div class="form-row" id="pembayaranTunaiRow">
+                        <div class="form-group">
+                            <label>Uang Pelanggan (Rp) <span style="color:#DC2626">*</span></label>
+                            <input type="number" name="uang_bayar" id="uangBayar" placeholder="Masukkan nominal uang..." oninput="hitungKembalian()" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Kembalian</label>
+                            <input type="text" id="kembalianDisplay" readonly style="background:#f3f4f6; font-weight:700" value="Rp 0">
+                            <input type="hidden" name="kembalian" id="kembalian" value="0">
                         </div>
                     </div>
                     <!-- Status pembayaran dan alamat dihilangkan untuk model retail sembako -->
@@ -192,6 +203,74 @@ function formatRp(n) {
     return 'Rp ' + Math.round(n).toLocaleString('id-ID');
 }
 
+function updatePembayaran() {
+    const selectMetode = document.getElementsByName('metode_pembayaran')[0];
+    if (!selectMetode) return;
+    const metode = selectMetode.value;
+    
+    const totalText = document.getElementById('totalDisplay').textContent;
+    const total = parseInt(totalText.replace(/[^0-9]/g, '')) || 0;
+    
+    const uangBayarInput = document.getElementById('uangBayar');
+    const kembalianDisplay = document.getElementById('kembalianDisplay');
+    const kembalianInput = document.getElementById('kembalian');
+    
+    if (metode === 'transfer' || metode === 'qris') {
+        uangBayarInput.value = total;
+        uangBayarInput.readOnly = true;
+        uangBayarInput.style.backgroundColor = '#f3f4f6';
+        
+        kembalianDisplay.value = formatRp(0);
+        kembalianDisplay.style.color = '';
+        kembalianInput.value = 0;
+    } else {
+        uangBayarInput.readOnly = false;
+        uangBayarInput.style.backgroundColor = '';
+        hitungKembalian();
+    }
+}
+
+function hitungKembalian() {
+    const totalText = document.getElementById('totalDisplay').textContent;
+    const total = parseInt(totalText.replace(/[^0-9]/g, '')) || 0;
+    
+    const uangBayarInput = document.getElementById('uangBayar');
+    const uangBayarVal = uangBayarInput.value.trim();
+    const uangBayar = parseInt(uangBayarVal) || 0;
+    
+    const kembalianDisplay = document.getElementById('kembalianDisplay');
+    const kembalianInput = document.getElementById('kembalian');
+    
+    const selectMetode = document.getElementsByName('metode_pembayaran')[0];
+    const metode = selectMetode ? selectMetode.value : 'tunai';
+    
+    if (metode === 'transfer' || metode === 'qris') {
+        uangBayarInput.value = total;
+        kembalianDisplay.value = formatRp(0);
+        kembalianDisplay.style.color = '';
+        kembalianInput.value = 0;
+        return;
+    }
+    
+    if (uangBayarVal === '') {
+        kembalianDisplay.value = formatRp(0);
+        kembalianDisplay.style.color = '';
+        kembalianInput.value = 0;
+        return;
+    }
+    
+    const kembalian = uangBayar - total;
+    if (kembalian < 0) {
+        kembalianDisplay.value = 'Uang Kurang!';
+        kembalianDisplay.style.color = '#DC2626';
+        kembalianInput.value = kembalian;
+    } else {
+        kembalianDisplay.value = formatRp(kembalian);
+        kembalianDisplay.style.color = '';
+        kembalianInput.value = kembalian;
+    }
+}
+
 function tambahBaris() {
     itemCount++;
     const row = document.createElement('div');
@@ -253,6 +332,9 @@ function hitungTotal() {
         total += parseInt(el.textContent.replace(/[^0-9]/g, '')) || 0;
     });
     document.getElementById('totalDisplay').textContent = formatRp(total);
+    if (typeof updatePembayaran === 'function') {
+        updatePembayaran();
+    }
 }
 
 function hapusBaris(id) {
@@ -278,6 +360,7 @@ function switchTab(name, btn) {
 // Tambah 1 baris otomatis saat halaman load
 perbaruiDatalistProduk();
 tambahBaris();
+updatePembayaran();
 
 // Data pelanggan dari Flask
 const pelangganData = {{ pelanggan_list | tojson }};
@@ -336,6 +419,31 @@ function validasiDanSimpan() {
         alert('Minimal satu produk harus ditambahkan!');
         return;
     }
+
+    const selectMetode = document.getElementsByName('metode_pembayaran')[0];
+    const metode = selectMetode ? selectMetode.value : 'tunai';
+    const totalText = document.getElementById('totalDisplay').textContent;
+    const total = parseInt(totalText.replace(/[^0-9]/g, '')) || 0;
+    
+    const uangBayarInput = document.getElementById('uangBayar');
+    const uangBayarVal = uangBayarInput.value.trim();
+    const uangBayar = parseInt(uangBayarVal) || 0;
+
+    if (metode === 'tunai') {
+        if (uangBayarVal === '') {
+            uangBayarInput.style.border = '1.5px solid #DC2626';
+            uangBayarInput.focus();
+            alert('Uang pelanggan wajib diisi untuk pembayaran tunai!');
+            return;
+        }
+        if (uangBayar < total) {
+            uangBayarInput.style.border = '1.5px solid #DC2626';
+            uangBayarInput.focus();
+            alert('Uang pelanggan kurang untuk melakukan transaksi Tunai!');
+            return;
+        }
+    }
+    uangBayarInput.style.border = '';
 
     document.getElementById('formTrx').submit();
 }

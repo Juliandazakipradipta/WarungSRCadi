@@ -276,6 +276,14 @@
                 <span>Metode Pembayaran</span>
                 <strong>{{ transaksi.metode_pembayaran|title }}</strong>
             </div>
+            <div class="payment-row">
+                <span>Uang Bayar</span>
+                <strong>Rp {{ "{:,.0f}".format(transaksi.uang_bayar or 0).replace(',', '.') }}</strong>
+            </div>
+            <div class="payment-row">
+                <span>Kembalian</span>
+                <strong>Rp {{ "{:,.0f}".format(transaksi.kembalian or 0).replace(',', '.') }}</strong>
+            </div>
         </div>
         
         <!-- Footer -->

@@ -117,7 +117,7 @@ def cek_stok_dan_notif(cursor):
 def get_struk_text(id_transaksi, cursor):
     cursor.execute("""
         SELECT t.kode_transaksi, t.tanggal_transaksi, p.no_whatsapp,
-               t.total_harga, t.metode_pembayaran
+               t.total_harga, t.metode_pembayaran, t.uang_bayar, t.kembalian
         FROM transaksi t
         LEFT JOIN pelanggan p ON t.id_pelanggan = p.id_pelanggan
         WHERE t.id_transaksi = %s
@@ -156,6 +156,8 @@ def get_struk_text(id_transaksi, cursor):
 ━━━━━━━━━━━━━━━━━━━━━━━━
 💰 *Total: Rp {int(transaksi_data['total_harga']):,}*
 💳 Metode: *{transaksi_data['metode_pembayaran'].title()}*
+💵 Bayar: *Rp {int(transaksi_data['uang_bayar'] or 0):,}*
+🪙 Kembali: *Rp {int(transaksi_data['kembalian'] or 0):,}*
 
 Terima kasih telah berbelanja! 🙏
 ━━━━━━━━━━━━━━━━━━━━━━━━"""
@@ -639,12 +641,21 @@ def transaksi():
                 })
 
         if items:
+            uang_bayar = float(request.form.get('uang_bayar', 0) or 0)
+            kembalian = float(request.form.get('kembalian', 0) or 0)
+            if metode_bayar in ('transfer', 'qris'):
+                uang_bayar = float(total)
+                kembalian = 0.0
+            else:
+                kembalian = max(0.0, uang_bayar - float(total))
+
             try:
                 cur.execute("""
                     INSERT INTO transaksi (kode_transaksi, id_pelanggan, tanggal_transaksi,
-                                           total_harga, status_pembayaran, metode_pembayaran, catatan)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s)
-                """, (kode, id_pelanggan, tanggal, total, 'lunas', metode_bayar, catatan))
+                                           total_harga, status_pembayaran, metode_pembayaran, catatan,
+                                           uang_bayar, kembalian)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                """, (kode, id_pelanggan, tanggal, total, 'lunas', metode_bayar, catatan, uang_bayar, kembalian))
                 id_trx = cur.lastrowid
 
                 for it in items:
@@ -1053,7 +1064,7 @@ def struk(id_transaksi):
     cur = mysql.connection.cursor()
     cur.execute("""
         SELECT t.id_transaksi, t.kode_transaksi, t.tanggal_transaksi, p.no_whatsapp,
-               t.total_harga, t.metode_pembayaran
+               t.total_harga, t.metode_pembayaran, t.uang_bayar, t.kembalian
         FROM transaksi t
         LEFT JOIN pelanggan p ON t.id_pelanggan = p.id_pelanggan
         WHERE t.id_transaksi = %s
